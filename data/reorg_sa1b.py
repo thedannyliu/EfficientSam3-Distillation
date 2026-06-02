@@ -1,3 +1,4 @@
+import argparse
 import os
 import shutil
 import tarfile
@@ -208,14 +209,44 @@ def copy_files(pairs: List[Tuple[Path, Path]],
     print(f"\n  Completed {split} set: {successful} successful, {failed} failed in {elapsed:.1f}s")
 
 
+def parse_args():
+    default_workers = int(os.environ.get("SLURM_CPUS_PER_TASK", cpu_count()))
+    parser = argparse.ArgumentParser(
+        description="Extract and reorganize SA-1B tar shards into train/val folders."
+    )
+    parser.add_argument(
+        "--source-dir",
+        default="sa-1b-1p",
+        help="Directory containing SA-1B .tar files or extracted shard folders.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="SA-1B-1P",
+        help="Output root for images/{train,val} and annotations/{train,val}.",
+    )
+    parser.add_argument("--val-ratio", type=float, default=0.1)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=default_workers,
+        help="Extraction/copy worker count. Defaults to SLURM_CPUS_PER_TASK.",
+    )
+    parser.add_argument(
+        "--copy",
+        action="store_true",
+        help="Copy files instead of moving them out of extracted shard folders.",
+    )
+    return parser.parse_args()
+
+
 def main():
-    # ================= CONFIGURATION =================
-    source_dir = Path("sa-1b-1p")   # Where the .tar files are
-    output_dir = Path("SA-1B-1P")   # Where the Train/Val split goes
-    val_ratio = 0.1 
-    move_files = True                # Move after extracting?
-    num_workers = cpu_count()        # Use all cores
-    # =================================================
+    args = parse_args()
+    source_dir = Path(args.source_dir)
+    output_dir = Path(args.output_dir)
+    val_ratio = args.val_ratio
+    move_files = not args.copy
+    num_workers = max(1, args.num_workers)
 
     print("=" * 60)
     print("SA-1B Dataset Extractor & Reorganizer")
@@ -223,8 +254,7 @@ def main():
     print(f"CPU cores available: {cpu_count()}")
     
     if not source_dir.exists():
-        print(f"Error: Source directory '{source_dir}' not found!")
-        return
+        raise FileNotFoundError(f"Source directory '{source_dir}' not found")
 
     # -------------------------------------------------
     # PHASE 1: CHECK & EXTRACT
@@ -253,7 +283,9 @@ def main():
     create_directory_structure(output_dir)
     
     print(f"Splitting data (train/val ratio: {1-val_ratio:.1%}/{val_ratio:.1%})...")
-    train_pairs, val_pairs = split_train_val(pairs, val_ratio=val_ratio)
+    train_pairs, val_pairs = split_train_val(
+        pairs, val_ratio=val_ratio, seed=args.seed
+    )
     print(f"Train set: {len(train_pairs)} pairs")
     print(f"Val set: {len(val_pairs)} pairs")
 

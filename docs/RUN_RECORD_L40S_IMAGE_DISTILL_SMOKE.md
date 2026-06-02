@@ -4,6 +4,7 @@ Date: 2026-06-02
 Repo: `/storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation`
 Branch: `image-encoder-distill-pipeline`
 Pipeline commit: `8abc6e3` (`Add scratch image encoder distillation smoke pipeline`)
+Preflight commit: `703862c` (`Add scratch preflight for image distillation`)
 Scratch root: `/storage/scratch1/9/eliu354/efficientsam3_distill_smoke`
 
 ## Objective
@@ -27,6 +28,7 @@ Run the SAM3 Stage 1 image encoder distillation pipeline end to end on one GPU, 
 - Student specs: `es_rv_s`, `es_rv_m`, `es_rv_l`
 - Runner: `scripts/run_image_encoder_distill_smoke.sh`
 - Preflight: `scripts/preflight_image_encoder_distill.sh`
+- CPU asset prep: `scripts/prepare_image_encoder_distill_assets.sh`
 - Slurm script: `scripts/slurm_l40s_image_distill_smoke.sbatch`
 
 ## Scratch Layout
@@ -114,8 +116,31 @@ Evidence:
 - ES-RV-S config parsed and model construction passed: `repvit_m0_9`, `batch=4`, `epochs=3`, `params=14551264`.
 - ES-RV-M config parsed and model construction passed: `repvit_m1_1`, `batch=4`, `epochs=3`, `params=17739408`.
 - ES-RV-L config parsed and model construction passed: `repvit_m2_3`, `batch=2`, `epochs=3`, `params=32499848`.
-- Scratch usage after preflight: about `7.8G`.
+- Scratch usage after preflight: about `8.7G`.
 - Slurm job `9400333` was still `PENDING (Priority)` after preflight; no teacher embeddings, training logs, or merged checkpoints exist yet.
+
+## CPU Asset Preparation
+
+The L40S job remained `PENDING (Priority)`, so checkpoint/data preparation was split into a CPU-safe path that can run while waiting for a GPU:
+
+```bash
+sbatch scripts/slurm_prepare_image_encoder_assets.sbatch
+```
+
+The asset prep writes:
+
+```text
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/prepare_assets_*.log
+```
+
+It prepares:
+
+```text
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/sam3_checkpoints/sam3.pt
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/data/SA-1B-0.01P/subset_manifest.json
+```
+
+`data/reorg_sa1b.py` now accepts `--num-workers` and defaults to `SLURM_CPUS_PER_TASK`, so the CPU and GPU jobs do not oversubscribe the node during tar extraction/reorganization.
 
 Expected final artifacts:
 

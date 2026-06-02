@@ -105,7 +105,10 @@ if [ ! -d "${SUBSET_ROOT}/images/train" ] || \
     echo "Reorganizing SA-1B shards under ${DATA_ROOT}"
     (
       cd "${DATA_ROOT}"
-      "${PYTHON}" "${REPO_DIR}/data/reorg_sa1b.py"
+      "${PYTHON}" "${REPO_DIR}/data/reorg_sa1b.py" \
+        --source-dir "${RAW_TAR_DIR}" \
+        --output-dir "${REORG_ROOT}" \
+        --num-workers "${NUM_WORKERS}"
     )
   else
     echo "Using existing reorganized SA-1B data at ${REORG_ROOT}"

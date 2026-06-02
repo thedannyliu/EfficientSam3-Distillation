@@ -142,6 +142,25 @@ It prepares:
 
 `data/reorg_sa1b.py` now accepts `--num-workers` and defaults to `SLURM_CPUS_PER_TASK`, so the CPU and GPU jobs do not oversubscribe the node during tar extraction/reorganization.
 
+First CPU asset job attempt:
+
+```text
+Job ID: 9400793
+State: FAILED
+ExitCode: 1:0
+Log: sam3_img_assets-9400793.out
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/prepare_assets_20260602_191337.log
+```
+
+Failure reason: the installed Hugging Face CLI reports `huggingface-cli` as deprecated and no longer working. The download paths now use `hf download` and omit the removed `--local-dir-use-symlinks` option.
+
+Follow-up auth check:
+
+- Scratch-only `HF_HOME=/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/cache/huggingface` was not logged in and `hf download --dry-run` returned `Access denied. This repository requires approval.`
+- The default submitted environment is logged in to Hugging Face as `danny010324`; `hf download --dry-run facebook/sam3 sam3.pt` passed.
+- With scratch `HF_HOME` plus `HF_TOKEN_PATH` pointing at the approved default token file, `hf download --dry-run` also passed.
+- The scratch scripts now default `HF_HOME` to `${RUN_ROOT}/cache/huggingface` while reusing an ambient `${HF_HOME}/token` via `HF_TOKEN_PATH` when available.
+
 Expected final artifacts:
 
 ```text

@@ -126,10 +126,11 @@ Download the official SAM3 checkpoint into scratch:
 
 ```bash
 mkdir -p /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/sam3_checkpoints
-huggingface-cli download facebook/sam3 sam3.pt \
-  --local-dir /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/sam3_checkpoints \
-  --local-dir-use-symlinks False
+hf download facebook/sam3 sam3.pt \
+  --local-dir /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/sam3_checkpoints
 ```
+
+`facebook/sam3` is a gated Hugging Face repository. If `HF_HOME` is pointed at a scratch cache that has not been logged in, either run `hf auth login` for that cache or export `HF_TOKEN_PATH` to an already approved token file before downloading.
 
 If the checkpoint is downloaded manually, place it at:
 

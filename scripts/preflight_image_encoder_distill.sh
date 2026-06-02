@@ -6,10 +6,16 @@ RUN_ROOT="${RUN_ROOT:-/storage/scratch1/9/eliu354/efficientsam3_distill_smoke}"
 ENV_DIR="${ENV_DIR:-${RUN_ROOT}/conda_env}"
 CONDA_PKGS_DIRS="${CONDA_PKGS_DIRS:-${RUN_ROOT}/conda_pkgs}"
 PIP_CACHE_DIR="${PIP_CACHE_DIR:-${RUN_ROOT}/cache/pip}"
-HF_HOME="${HF_HOME:-${RUN_ROOT}/cache/huggingface}"
+AMBIENT_HF_HOME="${HF_HOME:-}"
+HF_HOME="${DISTILL_HF_HOME:-${RUN_ROOT}/cache/huggingface}"
+if [ -z "${HF_TOKEN:-}" ] && [ -z "${HF_TOKEN_PATH:-}" ] && \
+   [ -n "${AMBIENT_HF_HOME}" ] && [ "${AMBIENT_HF_HOME}" != "${HF_HOME}" ] && \
+   [ -f "${AMBIENT_HF_HOME}/token" ]; then
+  HF_TOKEN_PATH="${AMBIENT_HF_HOME}/token"
+fi
 PREFLIGHT_INSTALL_DEPS="${PREFLIGHT_INSTALL_DEPS:-1}"
 
-export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME
+export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME HF_TOKEN_PATH
 
 mkdir -p "${RUN_ROOT}" "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
 

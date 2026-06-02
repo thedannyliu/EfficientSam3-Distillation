@@ -6,7 +6,13 @@ RUN_ROOT="${RUN_ROOT:-/storage/scratch1/9/eliu354/efficientsam3_distill_smoke}"
 ENV_DIR="${ENV_DIR:-${RUN_ROOT}/conda_env}"
 CONDA_PKGS_DIRS="${CONDA_PKGS_DIRS:-${RUN_ROOT}/conda_pkgs}"
 PIP_CACHE_DIR="${PIP_CACHE_DIR:-${RUN_ROOT}/cache/pip}"
-HF_HOME="${HF_HOME:-${RUN_ROOT}/cache/huggingface}"
+AMBIENT_HF_HOME="${HF_HOME:-}"
+HF_HOME="${DISTILL_HF_HOME:-${RUN_ROOT}/cache/huggingface}"
+if [ -z "${HF_TOKEN:-}" ] && [ -z "${HF_TOKEN_PATH:-}" ] && \
+   [ -n "${AMBIENT_HF_HOME}" ] && [ "${AMBIENT_HF_HOME}" != "${HF_HOME}" ] && \
+   [ -f "${AMBIENT_HF_HOME}/token" ]; then
+  HF_TOKEN_PATH="${AMBIENT_HF_HOME}/token"
+fi
 DATA_ROOT="${DATA_ROOT:-${RUN_ROOT}/data}"
 RAW_TAR_DIR="${RAW_TAR_DIR:-${DATA_ROOT}/sa-1b-1p}"
 REORG_ROOT="${REORG_ROOT:-${DATA_ROOT}/SA-1B-1P}"
@@ -20,7 +26,7 @@ DOWNLOAD_CONCURRENCY="${DOWNLOAD_CONCURRENCY:-4}"
 CLEAN_INTERMEDIATE="${CLEAN_INTERMEDIATE:-1}"
 ASSET_INSTALL_DEPS="${ASSET_INSTALL_DEPS:-1}"
 
-export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME
+export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME HF_TOKEN_PATH
 
 mkdir -p "${RUN_ROOT}" "${DATA_ROOT}" "${CHECKPOINT_DIR}" \
   "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
@@ -37,7 +43,7 @@ echo "SAM3 checkpoint: ${SAM3_CKPT}"
 echo "Workers: ${NUM_WORKERS}"
 echo "Download concurrency: ${DOWNLOAD_CONCURRENCY}"
 
-if [ ! -x "${ENV_DIR}/bin/python" ] || [ ! -x "${ENV_DIR}/bin/huggingface-cli" ]; then
+if [ ! -x "${ENV_DIR}/bin/python" ] || [ ! -x "${ENV_DIR}/bin/hf" ]; then
   echo "Scratch environment is missing or incomplete; running preflight first."
   PREFLIGHT_INSTALL_DEPS="${ASSET_INSTALL_DEPS}" \
     bash "${REPO_DIR}/scripts/preflight_image_encoder_distill.sh"
@@ -48,9 +54,8 @@ export PATH="${ENV_DIR}/bin:${PATH}"
 
 if [ ! -s "${SAM3_CKPT}" ]; then
   echo "Downloading SAM3 checkpoint to ${SAM3_CKPT}"
-  huggingface-cli download facebook/sam3 sam3.pt \
-    --local-dir "${CHECKPOINT_DIR}" \
-    --local-dir-use-symlinks False
+  "${ENV_DIR}/bin/hf" download facebook/sam3 sam3.pt \
+    --local-dir "${CHECKPOINT_DIR}"
 else
   echo "Using existing SAM3 checkpoint at ${SAM3_CKPT}"
 fi

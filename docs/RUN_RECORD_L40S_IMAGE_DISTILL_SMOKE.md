@@ -342,6 +342,19 @@ State after submission: PENDING (Priority)
 
 The smoke runner now reuses completed teacher embeddings when `rank0-values.bin` exists and `rank0-keys.txt` has `1120` keys, so pending job `9402755` should skip teacher export and start directly at ES-RV-S training.
 
+Additional isolated diagnostic submitted while the L40S job was pending:
+
+```text
+Job ID: 9402856
+Partition: gpu-h100
+QOS: embers
+Purpose: one-epoch ES-RV-S reader-fix diagnostic using existing L40S teacher embeddings
+Output: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output_diag_h100/stage1/es_rv_s_reader_fix
+State after submission: PENDING (Priority)
+```
+
+This diagnostic does not write to the full L40S smoke output directories.
+
 Expected final artifacts:
 
 ```text

@@ -165,20 +165,27 @@ fi
 
 TEACHER_OUTPUT="${OUTPUT_ROOT}/stage1_teacher"
 TEACHER_EMB="${TEACHER_OUTPUT}/embeddings"
+TEACHER_KEYS="${TEACHER_EMB}/rank0-keys.txt"
+TEACHER_VALUES="${TEACHER_EMB}/rank0-values.bin"
 
-echo "Exporting teacher image embeddings"
-bash "${REPO_DIR}/stage1/scripts/save_image_embeddings.sh" \
-  CFG="${REPO_DIR}/stage1/configs/teacher/sam_vit_huge_sa1b_5090_smoke.yaml" \
-  DATA_PATH="${SUBSET_ROOT}" \
-  OUTPUT="${TEACHER_OUTPUT}" \
-  BATCH_SIZE="${TEACHER_BATCH_SIZE}" \
-  GPUS=1 \
-  --opts \
-    MODEL.RESUME "${SAM3_CKPT}" \
-    DATA.NUM_SAMPLES "${NUM_SAMPLES}" \
-    DATA.RANDOM_SAMPLE False \
-    DATA.NUM_WORKERS "${NUM_WORKERS}" \
-    DISTILL.TEACHER_EMBED_PATH "${TEACHER_EMB}"
+if [ -s "${TEACHER_VALUES}" ] && [ -f "${TEACHER_KEYS}" ] && \
+   [ "$(wc -l < "${TEACHER_KEYS}")" -eq "${NUM_SAMPLES}" ]; then
+  echo "Using existing teacher image embeddings at ${TEACHER_EMB}"
+else
+  echo "Exporting teacher image embeddings"
+  bash "${REPO_DIR}/stage1/scripts/save_image_embeddings.sh" \
+    CFG="${REPO_DIR}/stage1/configs/teacher/sam_vit_huge_sa1b_5090_smoke.yaml" \
+    DATA_PATH="${SUBSET_ROOT}" \
+    OUTPUT="${TEACHER_OUTPUT}" \
+    BATCH_SIZE="${TEACHER_BATCH_SIZE}" \
+    GPUS=1 \
+    --opts \
+      MODEL.RESUME "${SAM3_CKPT}" \
+      DATA.NUM_SAMPLES "${NUM_SAMPLES}" \
+      DATA.RANDOM_SAMPLE False \
+      DATA.NUM_WORKERS "${NUM_WORKERS}" \
+      DISTILL.TEACHER_EMBED_PATH "${TEACHER_EMB}"
+fi
 
 FINAL_EPOCH=$((STUDENT_EPOCHS - 1))
 MERGED_CHECKPOINTS=()

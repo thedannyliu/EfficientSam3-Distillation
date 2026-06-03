@@ -331,6 +331,15 @@ Fix:
 - Seed parsing now indexes the scalar explicitly: `np.frombuffer(...)[0]`.
 - Verified against the generated teacher embedding package: key `sa_307767`, integer seed `1861567313`, fp16 embedding vector shape `(5308416,)`.
 
+Replacement GPU job after the seed parsing fix:
+
+```text
+Job ID: 9402755
+Partition: gpu-l40s
+QOS: embers
+State after submission: PENDING (Priority)
+```
+
 Expected final artifacts:
 
 ```text

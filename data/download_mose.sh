@@ -21,8 +21,8 @@ normalize_repo_id() {
 MOSE1_REPO="$(normalize_repo_id "$MOSE1_REPO_RAW")"
 MOSE2_REPO="$(normalize_repo_id "$MOSE2_REPO_RAW")"
 
-if ! command -v huggingface-cli >/dev/null 2>&1; then
-  echo "huggingface-cli not found. Please install it: pip install huggingface_hub" >&2
+if ! command -v hf >/dev/null 2>&1; then
+  echo "hf CLI not found. Please install it: pip install huggingface_hub" >&2
   exit 1
 fi
 
@@ -33,11 +33,10 @@ download_hf_repo() {
   local dest_dir="$2"
   echo "Downloading Hugging Face dataset repo: $repo_id -> $dest_dir"
   mkdir -p "$dest_dir"
-  huggingface-cli download "$repo_id" \
+  hf download "$repo_id" \
     --repo-type dataset \
     --include "*" \
-    --local-dir "$dest_dir" \
-    --local-dir-use-symlinks False
+    --local-dir "$dest_dir"
 }
 
 # Join split archives like train.tar.gz.aa, train.tar.gz.ab -> train.tar.gz

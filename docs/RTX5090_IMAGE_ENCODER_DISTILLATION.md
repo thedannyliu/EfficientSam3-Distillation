@@ -148,6 +148,22 @@ mkdir -p "${RUN_ROOT}/data"
 bash data/download_sa1b.sh data/sa-1b-1p.txt "${RUN_ROOT}/data/sa-1b-1p" 4
 ```
 
+As of 2026-06-02 on PACE Phoenix, the checked-in official CDN links returned HTTP `403 Forbidden`. The scratch runners therefore default to downloading the same shard names from the Hugging Face dataset mirror `ssbai/sa1b`:
+
+```bash
+RUN_ROOT=/storage/scratch1/9/eliu354/efficientsam3_distill_smoke
+bash data/download_sa1b_hf.sh \
+  data/sa-1b-1p.txt \
+  "${RUN_ROOT}/data/sa-1b-1p" \
+  ssbai/sa1b
+```
+
+To force the original TSV/CDN downloader after refreshing `data/sa-1b-1p.txt`, run the one-command scripts with:
+
+```bash
+SA1B_DOWNLOAD_BACKEND=tsv bash scripts/run_image_encoder_distill_smoke.sh
+```
+
 Reorganize the downloaded tar files into the layout expected by the Stage 1 dataloader:
 
 ```bash

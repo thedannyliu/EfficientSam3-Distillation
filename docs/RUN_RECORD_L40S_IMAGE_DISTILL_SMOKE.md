@@ -161,6 +161,58 @@ Follow-up auth check:
 - With scratch `HF_HOME` plus `HF_TOKEN_PATH` pointing at the approved default token file, `hf download --dry-run` also passed.
 - The scratch scripts now default `HF_HOME` to `${RUN_ROOT}/cache/huggingface` while reusing an ambient `${HF_HOME}/token` via `HF_TOKEN_PATH` when available.
 
+## 2026-06-02 GPU/CPU Data Download Failure
+
+The L40S job eventually started, but failed before teacher embedding export:
+
+```text
+Job ID: 9400333
+State: FAILED
+Log: sam3_img_smoke-9400333.out
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/run_20260602_204457.log
+Node: atl1-1-01-002-2-0
+Failure point: SA-1B shard download/reorganization
+```
+
+The second CPU asset prep attempt failed at the same point:
+
+```text
+Job ID: 9400866
+State: FAILED
+Log: sam3_img_assets-9400866.out
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/prepare_assets_20260602_192234.log
+```
+
+Observed failure:
+
+- Every official CDN URL in `data/sa-1b-1p.txt` returned HTTP `403 Forbidden` on PACE.
+- The old downloader left empty tar files and returned success, so the reorganizer attempted to extract ten empty tar files.
+- No `SA-1B-0.01P` subset, teacher embeddings, student logs, or merged checkpoints were produced.
+- The SAM3 checkpoint does exist at `/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/sam3_checkpoints/sam3.pt`.
+
+Fix in current worktree:
+
+- `data/download_sa1b.sh` removes failed/empty partial files and exits nonzero if any expected shard is missing.
+- `data/download_sa1b_hf.sh` adds a Hugging Face dataset mirror backend for the same shard filenames.
+- `scripts/prepare_image_encoder_distill_assets.sh` and `scripts/run_image_encoder_distill_smoke.sh` default `SA1B_DOWNLOAD_BACKEND=hf` with `SA1B_HF_REPO=ssbai/sa1b`.
+- Set `SA1B_DOWNLOAD_BACKEND=tsv` only after refreshing `data/sa-1b-1p.txt` with working official links.
+
+Next retry:
+
+```bash
+cd /storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation
+sbatch scripts/slurm_prepare_image_encoder_assets.sbatch
+```
+
+After the subset exists:
+
+```bash
+sbatch scripts/slurm_l40s_image_distill_smoke.sbatch
+```
+
+The current shell could not query live Slurm state after the failure because `squeue` returned `slurm_load_jobs error: Unable to contact slurm controller (connect failure)`.
+An immediate retry submission with `sbatch scripts/slurm_prepare_image_encoder_assets.sbatch` also failed with `Batch job submission failed: Unable to contact slurm controller (connect failure)`.
+
 Expected final artifacts:
 
 ```text

@@ -23,6 +23,8 @@ NUM_SAMPLES="${NUM_SAMPLES:-1120}"
 SAMPLE_SEED="${SAMPLE_SEED:-5090}"
 NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-4}}"
 DOWNLOAD_CONCURRENCY="${DOWNLOAD_CONCURRENCY:-4}"
+SA1B_DOWNLOAD_BACKEND="${SA1B_DOWNLOAD_BACKEND:-hf}"
+SA1B_HF_REPO="${SA1B_HF_REPO:-ssbai/sa1b}"
 CLEAN_INTERMEDIATE="${CLEAN_INTERMEDIATE:-1}"
 ASSET_INSTALL_DEPS="${ASSET_INSTALL_DEPS:-1}"
 
@@ -42,6 +44,7 @@ echo "Subset root: ${SUBSET_ROOT}"
 echo "SAM3 checkpoint: ${SAM3_CKPT}"
 echo "Workers: ${NUM_WORKERS}"
 echo "Download concurrency: ${DOWNLOAD_CONCURRENCY}"
+echo "SA-1B download backend: ${SA1B_DOWNLOAD_BACKEND}"
 
 if [ ! -x "${ENV_DIR}/bin/python" ] || [ ! -x "${ENV_DIR}/bin/hf" ]; then
   echo "Scratch environment is missing or incomplete; running preflight first."
@@ -64,10 +67,25 @@ if [ ! -d "${SUBSET_ROOT}/images/train" ] || \
    [ "$(find "${SUBSET_ROOT}/images/train" -maxdepth 1 -name '*.jpg' 2>/dev/null | wc -l)" -lt "${NUM_SAMPLES}" ]; then
   if [ ! -d "${REORG_ROOT}/images/train" ]; then
     echo "Downloading SA-1B 1% shards to ${RAW_TAR_DIR}"
-    bash "${REPO_DIR}/data/download_sa1b.sh" \
-      "${REPO_DIR}/data/sa-1b-1p.txt" \
-      "${RAW_TAR_DIR}" \
-      "${DOWNLOAD_CONCURRENCY}"
+    case "${SA1B_DOWNLOAD_BACKEND}" in
+      hf)
+        HF_BIN="${ENV_DIR}/bin/hf" SA1B_HF_REPO="${SA1B_HF_REPO}" \
+          bash "${REPO_DIR}/data/download_sa1b_hf.sh" \
+            "${REPO_DIR}/data/sa-1b-1p.txt" \
+            "${RAW_TAR_DIR}" \
+            "${SA1B_HF_REPO}"
+        ;;
+      tsv)
+        bash "${REPO_DIR}/data/download_sa1b.sh" \
+          "${REPO_DIR}/data/sa-1b-1p.txt" \
+          "${RAW_TAR_DIR}" \
+          "${DOWNLOAD_CONCURRENCY}"
+        ;;
+      *)
+        echo "ERROR: unsupported SA1B_DOWNLOAD_BACKEND=${SA1B_DOWNLOAD_BACKEND}; use hf or tsv." >&2
+        exit 1
+        ;;
+    esac
 
     echo "Reorganizing SA-1B shards under ${DATA_ROOT}"
     (

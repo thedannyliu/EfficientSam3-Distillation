@@ -340,6 +340,8 @@ QOS: embers
 State after submission: PENDING (Priority)
 ```
 
+The smoke runner now reuses completed teacher embeddings when `rank0-values.bin` exists and `rank0-keys.txt` has `1120` keys, so pending job `9402755` should skip teacher export and start directly at ES-RV-S training.
+
 Expected final artifacts:
 
 ```text

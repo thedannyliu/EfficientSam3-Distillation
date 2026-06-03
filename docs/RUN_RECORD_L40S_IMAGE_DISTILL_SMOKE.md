@@ -245,6 +245,47 @@ Dependency: afterok:9402240
 State after asset prep: PENDING (Priority)
 ```
 
+## 2026-06-02 First GPU Retry Failure
+
+Job `9402252` started on `atl1-1-03-007-31-0` and failed before any teacher embeddings were written:
+
+```text
+State: FAILED
+ExitCode: 1:0
+Elapsed: 00:02:53
+Log: sam3_img_smoke-9402252.out
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/run_20260602_230405.log
+```
+
+Root causes:
+
+- The fallback dependency install had allowed `torch>=2.7.0` to resolve to `torch 2.12.0+cu130`.
+- The L40S node driver reported version `12090`, so CUDA initialization failed for the CUDA 13 PyTorch wheel and `torch.cuda.is_available()` was `False`.
+- The fallback dependency list also missed `pandas`, which is imported by the Stage 1 data package.
+
+Fix:
+
+- The fallback dependency path now pins `torch==2.11.0+cu128` and `torchvision==0.26.0+cu128` from `https://download.pytorch.org/whl/cu128`.
+- The fallback dependency path now installs `pandas`.
+- `scripts/run_image_encoder_distill_smoke.sh` exits before teacher export if CUDA is unavailable in a GPU allocation.
+- The existing scratch env was repaired in place and verified on the login node:
+
+```text
+torch 2.11.0+cu128
+torchvision 0.26.0+cu128
+pandas 3.0.3
+cuda_available_login False
+```
+
+Replacement GPU job:
+
+```text
+Job ID: 9402450
+Partition: gpu-l40s
+QOS: embers
+State at submission: PENDING (Priority)
+```
+
 Expected final artifacts:
 
 ```text

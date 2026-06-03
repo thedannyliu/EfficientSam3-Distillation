@@ -50,12 +50,12 @@ Clone or copy the repo to the workstation. If cloning from the remote, check out
 
 ```bash
 cd "$(dirname "${REPO_DIR}")"
-git clone <REPO_URL> "$(basename "${REPO_DIR}")"
+git clone git@github.com:thedannyliu/EfficientSam3-Distillation.git "$(basename "${REPO_DIR}")"
 cd "${REPO_DIR}"
 git checkout image-encoder-distill-pipeline
 ```
 
-If the repo was copied manually from PACE, set `REPO_DIR` to that local copy and `cd` there.
+If the latest branch commits have not been pushed to GitHub yet, either push them first or copy the repo from PACE to the workstation with `rsync`, then set `REPO_DIR` to that local copy and `cd` there.
 
 Run the full local smoke pipeline:
 

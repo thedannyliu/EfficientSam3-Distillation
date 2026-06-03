@@ -368,6 +368,66 @@ Expected final artifacts:
 /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_l_smoke.pt
 ```
 
-## Current Limitation
+## 2026-06-03 Successful Full L40S Smoke Run
 
-The current Codex tool shell is not itself on a GPU node (`nvidia-smi` is unavailable). Scratch assets are prepared, but teacher embedding export and ES-RV-S/M/L student training still require the pending L40S Slurm allocation.
+Replacement L40S job `9402755` completed the full three-student smoke pipeline:
+
+```text
+Job ID: 9402755
+Partition: gpu-l40s
+QOS: embers
+Node: atl1-1-03-004-29-0
+Resources: cpu=4, gres/gpu:l40s=1, mem=96G, node=1
+Walltime: 00:15:49
+CPU time: 01:03:16
+Memory used: 17146140K
+Slurm stdout: sam3_img_smoke-9402755.out
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/run_20260603_021738.log
+```
+
+The runner reused the completed teacher embedding package from job `9402450`, then trained and merged all three student image encoder sizes:
+
+```text
+Teacher keys: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1_teacher/embeddings/rank0-keys.txt
+Teacher values: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1_teacher/embeddings/rank0-values.bin
+Teacher key count: 1120
+Teacher values size: 11890856320 bytes
+
+ES-RV-S log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_s/log_rank0.txt
+ES-RV-S final checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_s/ckpt_epoch_2.pth
+ES-RV-S merged checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_s_smoke.pt
+ES-RV-S merged size: 1714333907 bytes
+
+ES-RV-M log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_m/log_rank0.txt
+ES-RV-M final checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_m/ckpt_epoch_2.pth
+ES-RV-M merged checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_m_smoke.pt
+ES-RV-M merged size: 1727107813 bytes
+
+ES-RV-L log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_l/log_rank0.txt
+ES-RV-L final checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/stage1/es_rv_l/ckpt_epoch_2.pth
+ES-RV-L merged checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_l_smoke.pt
+ES-RV-L merged size: 1786850967 bytes
+```
+
+The Slurm stdout ended with all three merged checkpoint paths and `Done.`, followed by the Slurm epilog for job `9402755`.
+
+## 2026-06-02 H100 Reader Diagnostic Result
+
+The isolated one-epoch ES-RV-S diagnostic also completed, confirming that the saved teacher embedding reader fix works outside the full L40S output directory:
+
+```text
+Job ID: 9402856
+Partition: gpu-h100
+QOS: embers
+Node: atl1-1-01-006-19-0
+Resources: cpu=4, gres/gpu:h100=1, mem=96G, node=1
+Walltime: 00:04:07
+Memory used: 18915152K
+Slurm stdout: sam3_img_s_diag-9402856.out
+Output: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output_diag_h100/stage1/es_rv_s_reader_fix
+Final checkpoint: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output_diag_h100/stage1/es_rv_s_reader_fix/ckpt_epoch_0.pth
+```
+
+## Final Status
+
+The single-GPU PACE Phoenix smoke objective is complete for ES-RV-S, ES-RV-M, and ES-RV-L on `embers`. The remaining use of this record is as evidence for the RTX 5090 workstation reproduction guide.

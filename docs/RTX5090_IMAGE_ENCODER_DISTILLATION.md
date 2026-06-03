@@ -5,6 +5,7 @@ This runbook describes how to reproduce the Stage 1 SAM3 image encoder distillat
 ## Summary
 
 - Hardware target: 1x RTX 5090 with 32 GB VRAM.
+- Verified cluster smoke baseline: one PACE Phoenix L40S job, Slurm job `9402755`, `gpu-l40s`, QOS `embers`, completed on 2026-06-03.
 - Teacher: official SAM3 image model checkpoint, using only the frozen image trunk.
 - Students: ES-RV-S / RepViT-M0.9, ES-RV-M / RepViT-M1.1, and ES-RV-L / RepViT-M2.3.
 - Dataset for smoke run: 1120 randomly sampled SA-1B training images, approximately 0.01% of full SA-1B. The subset is materialized once with seed `5090`; teacher export and all student runs read that same subset without a second random sampling pass.
@@ -25,7 +26,15 @@ cd /storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation
 sbatch scripts/slurm_l40s_image_distill_smoke.sbatch
 ```
 
-Or run interactively on a workstation/GPU shell:
+The verified PACE smoke run produced:
+
+```text
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_s_smoke.pt
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_m_smoke.pt
+/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/output/efficient_sam3_repvit_l_smoke.pt
+```
+
+For an RTX 5090 workstation, use the same runner from a CUDA-visible shell:
 
 ```bash
 cd /storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation
@@ -97,7 +106,7 @@ The GPU runner reuses these assets and skips checkpoint/data preparation if they
 
 ## 4. Manual Environment
 
-Create the environment from scratch:
+The one-command runner creates and repairs the scratch environment automatically. If creating a workstation environment manually, start with the normal Stage 1 extra:
 
 ```bash
 conda create -n efficientsam3 python=3.12 -y
@@ -108,7 +117,25 @@ pip install -U pip
 pip install -e ".[stage1]"
 ```
 
-Verify CUDA and PyTorch see the RTX 5090:
+If that install fails on `mmcv` or resolves a PyTorch wheel that cannot initialize CUDA on the local driver, use the same fallback dependency set that passed on PACE L40S:
+
+```bash
+pip install -e . --no-deps
+pip install --index-url https://download.pytorch.org/whl/cu128 \
+  --extra-index-url https://pypi.org/simple \
+  torch==2.11.0+cu128 torchvision==0.26.0+cu128
+pip install \
+  "timm>=1.0.17" "numpy>=1.26.4" tqdm "ftfy==6.1.1" regex \
+  "iopath>=0.1.10" typing_extensions huggingface_hub psutil \
+  "decord>=0.6.0" "mmengine>=0.10.4" "pycocotools>=2.0.7" \
+  "yacs>=0.1.8" "Pillow>=10.0.0" "opencv-python>=4.9.0.80" \
+  "scipy>=1.10.0" "scikit-image>=0.21.0" "scikit-learn>=1.3.0" \
+  "tensorboard>=2.12.0" "einops>=0.7.0" "hydra-core>=1.3.2" \
+  "submitit>=1.5.1" "fvcore>=0.1.5.post20221221" \
+  "fairscale>=0.4.13" pandas pyyaml segment-anything
+```
+
+Verify CUDA and PyTorch see the RTX 5090 before exporting teacher embeddings:
 
 ```bash
 python - <<'PY'
@@ -119,6 +146,8 @@ print(torch.cuda.get_device_name(0))
 print(torch.cuda.get_device_properties(0).total_memory / 1024**3, "GiB")
 PY
 ```
+
+Do not continue if `torch.cuda.is_available()` is `False`; fix the NVIDIA driver, CUDA-compatible PyTorch wheel, or shell environment first.
 
 ## 5. Checkpoint
 
@@ -325,7 +354,34 @@ For a larger random subset, override both teacher export and student training wi
 
 The teacher embedding export must be rerun whenever `DATA.NUM_SAMPLES`, `DATA.RANDOM_SAMPLE`, `DATA.SAMPLE_SEED`, image size, or embedding shape changes.
 
-## 11. Reporting Expected Time
+## 11. Completion Checks
+
+After the one-command RTX 5090 run, verify the same artifacts that the L40S baseline produced:
+
+```bash
+RUN_ROOT=/storage/scratch1/9/eliu354/efficientsam3_distill_smoke
+wc -l "${RUN_ROOT}/output/stage1_teacher/embeddings/rank0-keys.txt"
+ls -lh \
+  "${RUN_ROOT}/output/stage1_teacher/embeddings/rank0-values.bin" \
+  "${RUN_ROOT}/output/efficient_sam3_repvit_s_smoke.pt" \
+  "${RUN_ROOT}/output/efficient_sam3_repvit_m_smoke.pt" \
+  "${RUN_ROOT}/output/efficient_sam3_repvit_l_smoke.pt"
+tail -40 "${RUN_ROOT}"/run_*.log
+```
+
+Expected baseline from the successful L40S run:
+
+```text
+Teacher key count: 1120
+Teacher values size: 11890856320 bytes
+ES-RV-S merged size: 1714333907 bytes
+ES-RV-M merged size: 1727107813 bytes
+ES-RV-L merged size: 1786850967 bytes
+```
+
+The exact checkpoint byte sizes may differ if package versions, PyTorch serialization, or training settings change. The required completion signal is that all three `efficient_sam3_repvit_*_smoke.pt` files exist, each corresponding `stage1/es_rv_*/log_rank0.txt` reaches the final configured epoch, and the latest run log ends with all three merged checkpoint paths and `Done.`
+
+## 12. Reporting Expected Time
 
 Use the first 50-100 logged steps as the reliable estimate. The code reports `throughput` and `total_eta` directly in:
 

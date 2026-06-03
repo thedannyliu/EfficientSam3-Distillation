@@ -197,21 +197,53 @@ Fix in current worktree:
 - `scripts/prepare_image_encoder_distill_assets.sh` and `scripts/run_image_encoder_distill_smoke.sh` default `SA1B_DOWNLOAD_BACKEND=hf` with `SA1B_HF_REPO=ssbai/sa1b`.
 - Set `SA1B_DOWNLOAD_BACKEND=tsv` only after refreshing `data/sa-1b-1p.txt` with working official links.
 
-Next retry:
+Immediate retry submission initially failed while the Slurm controller was unavailable:
 
 ```bash
 cd /storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation
 sbatch scripts/slurm_prepare_image_encoder_assets.sbatch
 ```
 
-After the subset exists:
+Error:
 
-```bash
-sbatch scripts/slurm_l40s_image_distill_smoke.sbatch
+```text
+Batch job submission failed: Unable to contact slurm controller (connect failure)
 ```
 
-The current shell could not query live Slurm state after the failure because `squeue` returned `slurm_load_jobs error: Unable to contact slurm controller (connect failure)`.
-An immediate retry submission with `sbatch scripts/slurm_prepare_image_encoder_assets.sbatch` also failed with `Batch job submission failed: Unable to contact slurm controller (connect failure)`.
+## 2026-06-02 Successful Asset Prep Retry
+
+After Slurm recovered, CPU asset prep was resubmitted:
+
+```text
+Job ID: 9402240
+Partition: cpu-medium
+QOS: embers
+State: COMPLETED
+ExitCode: 0:0
+Elapsed: 00:15:45
+Node: atl1-1-03-004-2-1
+Scratch log: /storage/scratch1/9/eliu354/efficientsam3_distill_smoke/prepare_assets_20260602_224506.log
+```
+
+Evidence:
+
+- `SA1B_DOWNLOAD_BACKEND=hf` and `SA1B_HF_REPO=ssbai/sa1b` were used.
+- All ten SA-1B shards downloaded successfully from the Hugging Face mirror.
+- `data/reorg_sa1b.py` found `111860` image/annotation pairs, split them into `100674` train and `11186` val pairs, and moved them with `0` failures.
+- The deterministic subset was created at `/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/data/SA-1B-0.01P`.
+- `subset_manifest.json` records `seed=5090`, `requested_num_samples=1120`, and `actual_num_samples=1120`.
+- Verified file counts: `1120` train images and `1120` train annotations.
+- Scratch usage after cleanup is about `13G`; the intermediate raw tar and reorganized 1% data were removed.
+
+The dependent L40S smoke job was submitted after the asset job:
+
+```text
+Job ID: 9402252
+Partition: gpu-l40s
+QOS: embers
+Dependency: afterok:9402240
+State after asset prep: PENDING (Priority)
+```
 
 Expected final artifacts:
 
@@ -228,4 +260,4 @@ Expected final artifacts:
 
 ## Current Limitation
 
-The current Codex tool shell is not itself on a GPU node (`nvidia-smi` is unavailable). Scratch is writable from the login shell, but the actual CUDA run still requires the pending Slurm GPU allocation.
+The current Codex tool shell is not itself on a GPU node (`nvidia-smi` is unavailable). Scratch assets are prepared, but teacher embedding export and ES-RV-S/M/L student training still require the pending L40S Slurm allocation.

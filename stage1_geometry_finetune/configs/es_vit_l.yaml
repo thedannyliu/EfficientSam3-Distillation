@@ -1,0 +1,9 @@
+# ViT-Base - Geometry Fine-tuning
+BASE: ['base_geometry_finetune.yaml']
+
+MODEL:
+  NAME: ES-VIT-L-GeometryFinetune
+  BACKBONE: vit_base
+
+OUTPUT: output_geometry_finetune/es_vit_l
+TAG: default

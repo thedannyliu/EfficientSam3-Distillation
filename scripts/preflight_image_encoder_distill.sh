@@ -95,9 +95,18 @@ import yaml
 
 configs = [
     "stage1/configs/teacher/sam_vit_huge_sa1b_5090_smoke.yaml",
-    "stage1/configs/es_rv_s_5090_smoke.yaml",
-    "stage1/configs/es_rv_m_5090_smoke.yaml",
-    "stage1/configs/es_rv_l_5090_smoke.yaml",
+    "stage1/configs/es_rv_s.yaml",
+    "stage1/configs/es_rv_m.yaml",
+    "stage1/configs/es_rv_l.yaml",
+    "stage1/configs/es_tv_s.yaml",
+    "stage1/configs/es_tv_m.yaml",
+    "stage1/configs/es_tv_l.yaml",
+    "stage1/configs/es_ev_s.yaml",
+    "stage1/configs/es_ev_m.yaml",
+    "stage1/configs/es_ev_l.yaml",
+    "stage1/configs/es_vit_s.yaml",
+    "stage1/configs/es_vit_m.yaml",
+    "stage1/configs/es_vit_l.yaml",
 ]
 
 print("torch", torch.__version__)
@@ -137,7 +146,7 @@ for cfg in configs:
         "batch=" + str(config.DATA.BATCH_SIZE),
         "epochs=" + str(config.TRAIN.EPOCHS),
     )
-    if str(config.MODEL.BACKBONE).startswith("repvit"):
+    if cfg.startswith("stage1/configs/es_"):
         model = build_image_student_model(config)
         num_params = sum(p.numel() for p in model.parameters())
         print(

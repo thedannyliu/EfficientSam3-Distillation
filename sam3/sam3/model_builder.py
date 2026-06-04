@@ -949,6 +949,49 @@ def _create_student_vision_backbone(
         wrapped_backbone = TinyViTTrunkWrapper(backbone)
         in_channels = wrapped_backbone.channel_list[0]
 
+    elif backbone_type == "vit":
+        name_map = {
+            "tiny": (192, 12, 3),
+            "t": (192, 12, 3),
+            "small": (384, 12, 6),
+            "s": (384, 12, 6),
+            "base": (768, 12, 12),
+            "b": (768, 12, 12),
+        }
+        if model_name not in name_map:
+            raise ValueError(f"Unknown ViT model: {model_name}")
+        embed_dim, depth, num_heads = name_map[model_name]
+        in_channels = embed_dim
+        backbone = ViT(
+            img_size=1008,
+            pretrain_img_size=336,
+            patch_size=14,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio=4,
+            norm_layer="LayerNorm",
+            qkv_bias=True,
+            rel_pos_blocks=True,
+            global_att_blocks=(depth - 1,),
+            window_size=14,
+            pretrain_use_cls_token=True,
+            retain_cls_token=False,
+            use_act_checkpoint=False,
+        )
+
+        class ViTTrunkWrapper(nn.Module):
+            def __init__(self, model):
+                super().__init__()
+                self.model = model
+                self.channel_list = [embed_dim]
+
+            def forward(self, x):
+                x = x[0] if isinstance(x, list) else x
+                return self.model(x)[-1]
+
+        wrapped_backbone = ViTTrunkWrapper(backbone)
+
     else:
         raise ValueError(f"Unknown backbone type: {backbone_type}")
     

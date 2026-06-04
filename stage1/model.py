@@ -22,6 +22,7 @@ from sam3.backbones.efficientvit import (
     efficientvit_backbone_b1,
     efficientvit_backbone_b2,
 )
+from sam3.model.vitdet import ViT
 from sam3.sam3.backbones.mobile_clip import MobileCLIPTextTransformer
 from sam3.model.tokenizer_ve import SimpleTokenizer
 from sam3.model.text_encoder_student import TextStudentEncoder
@@ -335,6 +336,16 @@ class EfficientViTAdapter(nn.Module):
         return out["stage_final"]
 
 
+class PlainViTAdapter(nn.Module):
+    def __init__(self, model, out_channels):
+        super().__init__()
+        self.model = model
+        self.out_channels = out_channels
+
+    def forward(self, x):
+        return self.model(x)[-1]
+
+
 class EfficientSAM3VisionBackbone(nn.Module):
     def __init__(self, student_encoder, position_encoding):
         super().__init__()
@@ -414,6 +425,30 @@ def _build_backbone(name, img_size):
         adapter = EfficientViTAdapter(model)
         return adapter, adapter.out_channels
 
+    if name.startswith("vit"):
+        specs = {
+            "vit_tiny": (192, 12, 3),
+            "vit_small": (384, 12, 6),
+            "vit_base": (768, 12, 12),
+        }
+        embed_dim, depth, num_heads = specs[name]
+        model = ViT(
+            img_size=img_size,
+            pretrain_img_size=336,
+            patch_size=14,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio=4,
+            norm_layer="LayerNorm",
+            qkv_bias=True,
+            rel_pos_blocks=True,
+            global_att_blocks=(depth - 1,),
+            window_size=14,
+            pretrain_use_cls_token=True,
+            retain_cls_token=False,
+            use_act_checkpoint=True,
+        )
+        return PlainViTAdapter(model, embed_dim), embed_dim
+
     raise ValueError(f"Unsupported backbone {name}")
-
-

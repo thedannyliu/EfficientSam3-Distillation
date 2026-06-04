@@ -52,6 +52,11 @@ def parse_args():
         default="detector.backbone.vision_backbone.trunk.model.",
         help="Prefix in pretrained model for image encoder weights",
     )
+    parser.add_argument(
+        "--include-e2e-heads",
+        action="store_true",
+        help="Also merge conservative E2E fine-tuned SAM3 heads when present.",
+    )
     return parser.parse_args()
 
 
@@ -82,11 +87,19 @@ def main():
     replacements = {}
     student_prefix = args.student_prefix
     target_prefix = args.target_prefix
+    e2e_prefix_map = {
+        "sam3.backbone.vision_backbone.convs.": "detector.backbone.vision_backbone.convs.",
+        "sam3.backbone.vision_backbone.position_encoding.": "detector.backbone.vision_backbone.position_encoding.",
+        "sam3.geometry_encoder.": "detector.geometry_encoder.",
+        "sam3.transformer.": "detector.transformer.",
+        "sam3.segmentation_head.": "detector.segmentation_head.",
+    }
     
     for key, value in finetune_sd.items():
-        if key.startswith(student_prefix):
+        local_key = key[len("module."):] if key.startswith("module.") else key
+        if local_key.startswith(student_prefix):
             # Strip student prefix, add target prefix
-            stripped_key = key[len(student_prefix):]
+            stripped_key = local_key[len(student_prefix):]
             
             # Skip keys that belong to the frozen SAM3 teacher (which might be present in the checkpoint)
             if "sam3" in stripped_key or "teacher" in stripped_key:
@@ -94,6 +107,11 @@ def main():
                 
             new_key = f"{target_prefix}{stripped_key}"
             replacements[new_key] = value
+        elif args.include_e2e_heads:
+            for source_prefix, dest_prefix in e2e_prefix_map.items():
+                if local_key.startswith(source_prefix):
+                    replacements[f"{dest_prefix}{local_key[len(source_prefix):]}"] = value
+                    break
 
     print(f"\nStudent encoder keys extracted: {len(replacements)}")
 

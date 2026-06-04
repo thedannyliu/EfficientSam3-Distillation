@@ -27,13 +27,14 @@ SA1B_DOWNLOAD_BACKEND="${SA1B_DOWNLOAD_BACKEND:-hf}"
 SA1B_HF_REPO="${SA1B_HF_REPO:-ssbai/sa1b}"
 CLEAN_INTERMEDIATE="${CLEAN_INTERMEDIATE:-1}"
 ASSET_INSTALL_DEPS="${ASSET_INSTALL_DEPS:-1}"
+LOG_DIR="${ASSET_LOG_DIR:-${RUN_ROOT}/logs/assets}"
 
 export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME HF_TOKEN_PATH
 
 mkdir -p "${RUN_ROOT}" "${DATA_ROOT}" "${CHECKPOINT_DIR}" \
-  "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
+  "${LOG_DIR}" "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
 
-LOG_FILE="${RUN_ROOT}/prepare_assets_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="${LOG_DIR}/prepare_assets_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "Asset prep log: ${LOG_FILE}"

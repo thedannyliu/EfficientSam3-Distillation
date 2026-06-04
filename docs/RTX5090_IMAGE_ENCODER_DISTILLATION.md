@@ -43,7 +43,7 @@ Choose local paths first:
 export REPO_DIR="$HOME/src/EfficientSam3-Distillation"
 export RUN_ROOT="/data/efficientsam3_distill_smoke"
 export ENV_DIR="${RUN_ROOT}/conda_env"
-mkdir -p "$(dirname "${REPO_DIR}")" "${RUN_ROOT}"
+mkdir -p "$(dirname "${REPO_DIR}")" "${RUN_ROOT}"/logs/{preflight,assets,distill,eval}
 ```
 
 Check the local machine before starting the long run:
@@ -98,9 +98,19 @@ ${RUN_ROOT}/
 ├── cache/
 ├── data/
 │   └── SA-1B-0.01P/
+├── eval/
+│   └── image_encoder_distill/
+├── logs/
+│   ├── assets/
+│   ├── distill/
+│   ├── eval/
+│   ├── preflight/
+│   └── repo_root_archive/
 ├── sam3_checkpoints/
 └── output/
 ```
+
+Generated logs, Slurm stdout, evaluation summaries, and overlay images should stay under `${RUN_ROOT}`. Do not leave `sam3_img_*.out` or other generated output in the repository root; archived root stdout from early PACE runs was moved to `${RUN_ROOT}/logs/repo_root_archive/`.
 
 The runner sets `CLEAN_INTERMEDIATE=1` by default, so after creating `SA-1B-0.01P`, it removes the downloaded 1% tar directory and the temporary 1% reorganized dataset inside the run root. The retained dataset is the deterministic 1120-image subset plus teacher embeddings and checkpoints.
 
@@ -124,7 +134,7 @@ REPO_DIR="${REPO_DIR}" RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" \
 The preflight writes logs to:
 
 ```text
-${RUN_ROOT}/preflight_*.log
+${RUN_ROOT}/logs/preflight/preflight_*.log
 ```
 
 It validates dependency installation, PyTorch/core package imports, YAML parsing, config resolution for the teacher plus ES-RV-S/M/L smoke configs, and CPU construction of the three RepViT student image encoders.
@@ -144,7 +154,7 @@ This uses the same local run root, downloads `sam3.pt`, downloads the repo-provi
 Logs are written to:
 
 ```text
-${RUN_ROOT}/prepare_assets_*.log
+${RUN_ROOT}/logs/assets/prepare_assets_*.log
 ```
 
 The GPU runner reuses these assets and skips checkpoint/data preparation if they already exist.
@@ -461,7 +471,7 @@ ls -lh \
   "${RUN_ROOT}/output/efficient_sam3_repvit_s_smoke.pt" \
   "${RUN_ROOT}/output/efficient_sam3_repvit_m_smoke.pt" \
   "${RUN_ROOT}/output/efficient_sam3_repvit_l_smoke.pt"
-tail -40 "${RUN_ROOT}"/run_*.log
+tail -40 "${RUN_ROOT}"/logs/distill/run_*.log
 ```
 
 Expected baseline from the successful L40S run:

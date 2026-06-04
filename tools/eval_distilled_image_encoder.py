@@ -211,13 +211,29 @@ def normalize_mask(mask: Any, threshold: float = 0.0) -> np.ndarray:
     return mask > threshold
 
 
-def select_best_mask(masks: Any, scores: Any, threshold: float) -> tuple[np.ndarray, float]:
+def image_mask_shape(image: Image.Image) -> tuple[int, int]:
+    width, height = image.size
+    return height, width
+
+
+def empty_mask(image: Image.Image) -> np.ndarray:
+    return np.zeros(image_mask_shape(image), dtype=bool)
+
+
+def select_best_mask(
+    masks: Any,
+    scores: Any,
+    threshold: float,
+    empty_shape: tuple[int, int] | None = None,
+) -> tuple[np.ndarray, float]:
     if isinstance(scores, torch.Tensor):
         scores_np = scores.detach().float().cpu().numpy()
     else:
         scores_np = np.asarray(scores, dtype=np.float32)
     masks_np = masks.detach().cpu().numpy() if isinstance(masks, torch.Tensor) else np.asarray(masks)
-    if masks_np.shape[0] == 0:
+    if masks_np.size == 0 or masks_np.shape[0] == 0:
+        if empty_shape is not None:
+            return np.zeros(empty_shape, dtype=bool), float("nan")
         raise RuntimeError("model returned no masks")
     best_idx = int(np.argmax(scores_np)) if scores_np.size else 0
     score = float(scores_np[best_idx]) if scores_np.size else float("nan")
@@ -255,7 +271,7 @@ def predict_prompt(
 
             pred, prompt_sec = timed(device, _predict_box)
             masks, scores, _ = pred
-            mask, score = select_best_mask(masks, scores, threshold)
+            mask, score = select_best_mask(masks, scores, threshold, image_mask_shape(image))
         elif prompt_mode == "point":
             if point is None:
                 point = centered_point(image)
@@ -270,7 +286,7 @@ def predict_prompt(
 
             pred, prompt_sec = timed(device, _predict_point)
             masks, scores, _ = pred
-            mask, score = select_best_mask(masks, scores, threshold)
+            mask, score = select_best_mask(masks, scores, threshold, image_mask_shape(image))
         elif prompt_mode == "text":
             if not text_prompt:
                 raise ValueError("text prompt mode requires text_prompt")
@@ -280,8 +296,14 @@ def predict_prompt(
 
             state, prompt_sec = timed(device, _predict_text)
             if "masks" not in state or len(state["masks"]) == 0:
-                raise RuntimeError(f"text prompt returned no masks for prompt={text_prompt!r}")
-            mask, score = select_best_mask(state["masks"], state.get("scores", []), 0.5)
+                mask, score = empty_mask(image), float("nan")
+            else:
+                mask, score = select_best_mask(
+                    state["masks"],
+                    state.get("scores", []),
+                    0.5,
+                    image_mask_shape(image),
+                )
         else:
             raise ValueError(f"unsupported prompt mode: {prompt_mode}")
 

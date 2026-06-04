@@ -18,12 +18,13 @@ PYTORCH_INDEX_URL="${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
 PYPI_INDEX_URL="${PYPI_INDEX_URL:-https://pypi.org/simple}"
 TORCH_SPEC="${TORCH_SPEC:-torch==2.11.0+cu128}"
 TORCHVISION_SPEC="${TORCHVISION_SPEC:-torchvision==0.26.0+cu128}"
+LOG_DIR="${PREFLIGHT_LOG_DIR:-${RUN_ROOT}/logs/preflight}"
 
 export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME HF_TOKEN_PATH
 
-mkdir -p "${RUN_ROOT}" "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
+mkdir -p "${RUN_ROOT}" "${LOG_DIR}" "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
 
-LOG_FILE="${RUN_ROOT}/preflight_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="${LOG_DIR}/preflight_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "Preflight log: ${LOG_FILE}"

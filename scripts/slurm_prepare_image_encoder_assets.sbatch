@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
 #SBATCH --time=08:00:00
-#SBATCH --output=sam3_img_assets-%j.out
+#SBATCH --output=/storage/scratch1/9/eliu354/efficientsam3_distill_smoke/logs/assets/sam3_img_assets-%j.out
 
 set -euo pipefail
 

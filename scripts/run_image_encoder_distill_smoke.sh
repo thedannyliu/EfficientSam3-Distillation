@@ -35,13 +35,14 @@ PYPI_INDEX_URL="${PYPI_INDEX_URL:-https://pypi.org/simple}"
 TORCH_SPEC="${TORCH_SPEC:-torch==2.11.0+cu128}"
 TORCHVISION_SPEC="${TORCHVISION_SPEC:-torchvision==0.26.0+cu128}"
 STUDENT_SPECS="${STUDENT_SPECS:-es_rv_s:stage1/configs/es_rv_s_5090_smoke.yaml:stage1/es_rv_s:efficient_sam3_repvit_s_smoke.pt:4 es_rv_m:stage1/configs/es_rv_m_5090_smoke.yaml:stage1/es_rv_m:efficient_sam3_repvit_m_smoke.pt:${STUDENT_BATCH_SIZE} es_rv_l:stage1/configs/es_rv_l_5090_smoke.yaml:stage1/es_rv_l:efficient_sam3_repvit_l_smoke.pt:2}"
+LOG_DIR="${DISTILL_LOG_DIR:-${RUN_ROOT}/logs/distill}"
 
 export CONDA_PKGS_DIRS PIP_CACHE_DIR HF_HOME HF_TOKEN_PATH
 
 mkdir -p "${RUN_ROOT}" "${DATA_ROOT}" "${OUTPUT_ROOT}" "${CHECKPOINT_DIR}" \
-  "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
+  "${LOG_DIR}" "${CONDA_PKGS_DIRS}" "${PIP_CACHE_DIR}" "${HF_HOME}"
 
-LOG_FILE="${RUN_ROOT}/run_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="${LOG_DIR}/run_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "Run log: ${LOG_FILE}"

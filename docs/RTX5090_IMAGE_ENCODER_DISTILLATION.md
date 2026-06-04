@@ -383,7 +383,51 @@ ${RUN_ROOT}/output/efficient_sam3_repvit_m_smoke.pt
 ${RUN_ROOT}/output/efficient_sam3_repvit_l_smoke.pt
 ```
 
-## 11. Move from Smoke Run to Larger Run
+## 11. Timing, IoU, and Overlay Checks
+
+After the three merged image encoder checkpoints exist, run the fixed COCO-10 timing and accuracy check. This uses the same ten-image COCO val2017 manifest as `/storage/home/hcoda1/9/eliu354/r-agarg35-0/projects/efficientsam3-benchmark`, with one reviewed target object per image. The manifest is tracked in this repo; the images are copied or downloaded into `${RUN_ROOT}/data/coco_fixed10`, so full COCO is not kept.
+
+Prepare only the ten COCO images:
+
+```bash
+cd "${REPO_DIR}"
+python tools/eval_distilled_image_encoder.py \
+  --run-root "${RUN_ROOT}" \
+  --prepare-coco10 \
+  --prepare-only
+```
+
+Run ES-RV-S/M/L with text, point, and box prompts:
+
+```bash
+cd "${REPO_DIR}"
+python tools/eval_distilled_image_encoder.py \
+  --run-root "${RUN_ROOT}" \
+  --prepare-coco10 \
+  --sizes s m l \
+  --prompt-modes text point box
+```
+
+On PACE, submit the same evaluator to one L40S with `embers`:
+
+```bash
+cd "${REPO_DIR}"
+sbatch scripts/slurm_eval_distilled_image_encoder.sbatch
+```
+
+The evaluator writes structured output under:
+
+```text
+${RUN_ROOT}/eval/image_encoder_distill/<timestamp>/
+├── metrics.csv
+├── summary.json
+├── single_image/
+└── coco10/
+```
+
+Each COCO overlay shows the selected GT mask in red, the predicted mask in blue, and the active point or box prompt when applicable. The interactive notebook at `notebooks/distilled_image_encoder_interactive_eval.ipynb` lets you choose ES-RV-S/M/L, text/point/box prompt mode, and a fixed COCO sample; point and box sliders update a prompt preview before running inference, then the notebook displays timing, IoU, and the saved overlay image.
+
+## 12. Move from Smoke Run to Larger Run
 
 Once the smoke run succeeds, keep the same architecture and increase training scale:
 
@@ -406,7 +450,7 @@ For a larger random subset, override both teacher export and student training wi
 
 The teacher embedding export must be rerun whenever `DATA.NUM_SAMPLES`, `DATA.RANDOM_SAMPLE`, `DATA.SAMPLE_SEED`, image size, or embedding shape changes.
 
-## 12. Completion Checks
+## 13. Completion Checks
 
 After the one-command RTX 5090 run, verify the same artifacts that the L40S baseline produced:
 
@@ -432,7 +476,7 @@ ES-RV-L merged size: 1786850967 bytes
 
 The exact checkpoint byte sizes may differ if package versions, PyTorch serialization, or training settings change. The required completion signal is that all three `efficient_sam3_repvit_*_smoke.pt` files exist, each corresponding `stage1/es_rv_*/log_rank0.txt` reaches the final configured epoch, and the latest run log ends with all three merged checkpoint paths and `Done.`
 
-## 13. Reporting Expected Time
+## 14. Reporting Expected Time
 
 Use the first 50-100 logged steps as the reliable estimate. The code reports `throughput` and `total_eta` directly in:
 

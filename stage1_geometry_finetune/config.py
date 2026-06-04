@@ -45,6 +45,15 @@ _C.MODEL.RESUME = ''  # Resume training checkpoint
 _C.MODEL.SAM3_CHECKPOINT = ''  # Path to SAM3 checkpoint for frozen components
 
 # -----------------------------------------------------------------------------
+# Conservative end-to-end fine-tuning settings
+# -----------------------------------------------------------------------------
+_C.FINETUNE = CN()
+_C.FINETUNE.UNFREEZE_FPN = False
+_C.FINETUNE.UNFREEZE_GEOMETRY_ENCODER = False
+_C.FINETUNE.UNFREEZE_TRANSFORMER = False
+_C.FINETUNE.UNFREEZE_SEGMENTATION_HEAD = False
+
+# -----------------------------------------------------------------------------
 # Distillation settings
 # -----------------------------------------------------------------------------
 _C.DISTILL = CN()
@@ -186,6 +195,14 @@ def update_config(config, args):
         config.EVAL_MODE = True
     if args.throughput:
         config.THROUGHPUT_MODE = True
+    if getattr(args, 'unfreeze_fpn', False):
+        config.FINETUNE.UNFREEZE_FPN = True
+    if getattr(args, 'unfreeze_geometry_encoder', False):
+        config.FINETUNE.UNFREEZE_GEOMETRY_ENCODER = True
+    if getattr(args, 'unfreeze_transformer', False):
+        config.FINETUNE.UNFREEZE_TRANSFORMER = True
+    if getattr(args, 'unfreeze_segmentation_head', False):
+        config.FINETUNE.UNFREEZE_SEGMENTATION_HEAD = True
 
     # Set local rank for distributed training
     if 'LOCAL_RANK' in os.environ:

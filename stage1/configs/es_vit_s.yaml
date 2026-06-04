@@ -1,0 +1,8 @@
+BASE: ['base_stage1.yaml']
+
+MODEL:
+  NAME: ES-VIT-S
+  BACKBONE: vit_tiny
+
+OUTPUT: output/stage1/es_vit_s
+TAG: default

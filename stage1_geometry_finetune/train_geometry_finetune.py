@@ -205,6 +205,14 @@ def parse_option():
                         help='evaluate only')
     parser.add_argument('--throughput', action='store_true',
                         help='test throughput only')
+    parser.add_argument('--unfreeze-fpn', action='store_true',
+                        help='unfreeze SAM3 FPN/neck layers for conservative E2E fine-tuning')
+    parser.add_argument('--unfreeze-geometry-encoder', action='store_true',
+                        help='unfreeze SAM3 geometry encoder for conservative E2E fine-tuning')
+    parser.add_argument('--unfreeze-transformer', action='store_true',
+                        help='unfreeze SAM3 transformer encoder/decoder for conservative E2E fine-tuning')
+    parser.add_argument('--unfreeze-segmentation-head', action='store_true',
+                        help='unfreeze SAM3 segmentation head for conservative E2E fine-tuning')
     
     # Distributed
     parser.add_argument('--local_rank', type=int, default=0,
@@ -230,7 +238,10 @@ def main(config):
         embed_dim=config.DISTILL.EMBED_DIM,
         embed_size=config.DISTILL.EMBED_SIZE,
         img_size=config.DATA.IMG_SIZE,
-        freeze_fpn=True,
+        freeze_fpn=not config.FINETUNE.UNFREEZE_FPN,
+        unfreeze_geometry_encoder=config.FINETUNE.UNFREEZE_GEOMETRY_ENCODER,
+        unfreeze_transformer=config.FINETUNE.UNFREEZE_TRANSFORMER,
+        unfreeze_segmentation_head=config.FINETUNE.UNFREEZE_SEGMENTATION_HEAD,
     )
     
     # Load Stage 1 pretrained weights

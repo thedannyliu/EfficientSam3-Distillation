@@ -47,6 +47,7 @@ from sam3.backbones.efficientvit import (
     efficientvit_backbone_b1,
     efficientvit_backbone_b2,
 )
+from sam3.model.vitdet import ViT
 
 
 def _make_divisible(v, divisor, min_value=None):
@@ -112,6 +113,17 @@ class EfficientViTAdapter(nn.Module):
         return out["stage_final"]
 
 
+class PlainViTAdapter(nn.Module):
+    """Adapter for ViTDet/SAM-style plain ViT backbones."""
+    def __init__(self, model, out_channels):
+        super().__init__()
+        self.model = model
+        self.out_channels = out_channels
+
+    def forward(self, x):
+        return self.model(x)[-1]
+
+
 def build_student_backbone(backbone_name: str, img_size: int = 1024):
     """Build a student backbone and return (backbone_adapter, out_channels)."""
     backbone_name = backbone_name.lower()
@@ -145,6 +157,32 @@ def build_student_backbone(backbone_name: str, img_size: int = 1024):
         model = fn()
         adapter = EfficientViTAdapter(model)
         return adapter, adapter.out_channels
+
+    if backbone_name.startswith('vit'):
+        specs = {
+            'vit_tiny': (192, 12, 3),
+            'vit_small': (384, 12, 6),
+            'vit_base': (768, 12, 12),
+        }
+        embed_dim, depth, num_heads = specs[backbone_name]
+        model = ViT(
+            img_size=img_size,
+            pretrain_img_size=336,
+            patch_size=14,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio=4,
+            norm_layer="LayerNorm",
+            qkv_bias=True,
+            rel_pos_blocks=True,
+            global_att_blocks=(depth - 1,),
+            window_size=14,
+            pretrain_use_cls_token=True,
+            retain_cls_token=False,
+            use_act_checkpoint=True,
+        )
+        return PlainViTAdapter(model, embed_dim), embed_dim
     
     raise ValueError(f"Unknown backbone: {backbone_name}")
 
@@ -227,6 +265,9 @@ class GeometryFinetuneModel(nn.Module):
         embed_size: int = 72,
         img_size: int = 1008,
         freeze_fpn: bool = True,
+        unfreeze_geometry_encoder: bool = False,
+        unfreeze_transformer: bool = False,
+        unfreeze_segmentation_head: bool = False,
         device: str = "cuda",
     ):
         super().__init__()
@@ -235,6 +276,9 @@ class GeometryFinetuneModel(nn.Module):
         self.embed_size = embed_size
         self.img_size = img_size
         self.freeze_fpn = freeze_fpn
+        self.unfreeze_geometry_encoder = unfreeze_geometry_encoder
+        self.unfreeze_transformer = unfreeze_transformer
+        self.unfreeze_segmentation_head = unfreeze_segmentation_head
         
         # Build student trunk (trainable)
         self.student_trunk = StudentTrunk(
@@ -277,11 +321,28 @@ class GeometryFinetuneModel(nn.Module):
         self.geometry_encoder = self.sam3.geometry_encoder
         self.transformer = self.sam3.transformer
         self.segmentation_head = self.sam3.segmentation_head
+
+        if not freeze_fpn:
+            for module in (self.frozen_convs, self.frozen_position_encoding):
+                for param in module.parameters():
+                    param.requires_grad = True
+        if unfreeze_geometry_encoder:
+            for param in self.geometry_encoder.parameters():
+                param.requires_grad = True
+        if unfreeze_transformer:
+            for param in self.transformer.parameters():
+                param.requires_grad = True
+        if unfreeze_segmentation_head:
+            for param in self.segmentation_head.parameters():
+                param.requires_grad = True
         
         print(f"GeometryFinetuneModel initialized:")
         print(f"  - Student trunk: {student_backbone_name}")
         print(f"  - Embed dim: {embed_dim}, Embed size: {embed_size}")
         print(f"  - Frozen FPN: {freeze_fpn}")
+        print(f"  - Train geometry encoder: {unfreeze_geometry_encoder}")
+        print(f"  - Train transformer: {unfreeze_transformer}")
+        print(f"  - Train segmentation head: {unfreeze_segmentation_head}")
         print(f"  - Mode: DUAL-PATH (embedding + mask distillation)")
         
     def forward_student(self, images: torch.Tensor) -> torch.Tensor:

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation}"
-RUN_ROOT="${RUN_ROOT:-/storage/scratch1/9/eliu354/efficientsam3_distill_smoke}"
-ENV_DIR="${ENV_DIR:-${RUN_ROOT}/conda_env}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+DEFAULT_RUN_ROOT="$(cd "${REPO_DIR}/.." && pwd)/efficientsam3_distill_smoke"
+RUN_ROOT="${RUN_ROOT:-${DEFAULT_RUN_ROOT}}"
+ENV_DIR="${ENV_DIR:-${RUN_ROOT}/venv}"
 CONDA_PKGS_DIRS="${CONDA_PKGS_DIRS:-${RUN_ROOT}/conda_pkgs}"
 PIP_CACHE_DIR="${PIP_CACHE_DIR:-${RUN_ROOT}/cache/pip}"
 AMBIENT_HF_HOME="${HF_HOME:-}"
@@ -33,20 +35,19 @@ echo "Run root: ${RUN_ROOT}"
 echo "Env: ${ENV_DIR}"
 echo "Install dependencies: ${PREFLIGHT_INSTALL_DEPS}"
 
-if ! command -v conda >/dev/null 2>&1 && [ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]; then
-  source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-fi
-
-if ! command -v conda >/dev/null 2>&1; then
-  echo "ERROR: conda is required." >&2
-  exit 1
-fi
-
 if [ ! -x "${ENV_DIR}/bin/python" ]; then
+  if ! command -v conda >/dev/null 2>&1 && [ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]; then
+    source "${HOME}/miniconda3/etc/profile.d/conda.sh"
+  fi
+  if ! command -v conda >/dev/null 2>&1; then
+    echo "ERROR: ${ENV_DIR}/bin/python does not exist and conda is not available to create it." >&2
+    echo "Create it first with: python3.12 -m venv ${ENV_DIR}" >&2
+    exit 1
+  fi
   echo "Creating conda environment at ${ENV_DIR}"
   conda create -y -p "${ENV_DIR}" python=3.12
 else
-  echo "Using existing conda environment at ${ENV_DIR}"
+  echo "Using existing Python environment at ${ENV_DIR}"
 fi
 
 PYTHON="${ENV_DIR}/bin/python"

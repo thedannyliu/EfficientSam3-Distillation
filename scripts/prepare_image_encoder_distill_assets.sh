@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation}"
-RUN_ROOT="${RUN_ROOT:-/storage/scratch1/9/eliu354/efficientsam3_distill_smoke}"
-ENV_DIR="${ENV_DIR:-${RUN_ROOT}/conda_env}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+DEFAULT_RUN_ROOT="$(cd "${REPO_DIR}/.." && pwd)/efficientsam3_distill_smoke"
+RUN_ROOT="${RUN_ROOT:-${DEFAULT_RUN_ROOT}}"
+ENV_DIR="${ENV_DIR:-${RUN_ROOT}/venv}"
 CONDA_PKGS_DIRS="${CONDA_PKGS_DIRS:-${RUN_ROOT}/conda_pkgs}"
 PIP_CACHE_DIR="${PIP_CACHE_DIR:-${RUN_ROOT}/cache/pip}"
 AMBIENT_HF_HOME="${HF_HOME:-}"

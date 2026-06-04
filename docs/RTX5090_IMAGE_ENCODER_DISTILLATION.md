@@ -7,6 +7,8 @@ This runbook reproduces the local workstation pipeline for EfficientSAM3 image e
 - Hardware target: one RTX 5090 class workstation.
 - Teacher: official SAM3 image checkpoint.
 - Students: RepViT S/M/L, TinyViT S/M/L, EfficientViT S/M/L, ViT S/M/L.
+  - `tinyvit_*` is the TinyViT family.
+  - `vit_s` is ViT-Tiny, `vit_m` is ViT-Small, and `vit_l` is ViT-Base.
 - Distillation data: fixed SA-1B 1% split from `data/sa-1b-1p.txt`.
 - Fine-tune data: fixed disjoint SA-1B 0.01% split, default `1120` samples and seed `5091`.
 - COCO eval: full `val2017` or `test2017`, with point, box, and text prompt modes.
@@ -14,18 +16,35 @@ This runbook reproduces the local workstation pipeline for EfficientSAM3 image e
 
 ## Paths and Environment
 
-Use relative paths in shell setup:
+Run every command from the repository root:
+
+```bash
+cd EfficientSam3-Distillation
+```
+
+Set one output root outside the repository. In this example, `RUN_ROOT` is a sibling directory next to the repo:
 
 ```bash
 export RUN_ROOT="../efficientsam3_distill_runs"
 export ENV_DIR="${RUN_ROOT}/venv"
+mkdir -p "${RUN_ROOT}"
+```
+
+Meaning:
+
+- `RUN_ROOT`: where generated data, checkpoints, logs, caches, and W&B files go.
+- `ENV_DIR`: the Python virtual environment used by the scripts.
+- `../efficientsam3_distill_runs`: relative to the repo root, so nothing is written inside the repo.
+
+Then point all common caches into `RUN_ROOT`:
+
+```bash
 export HF_HOME="${RUN_ROOT}/cache/huggingface"
 export PIP_CACHE_DIR="${RUN_ROOT}/cache/pip"
 export CONDA_PKGS_DIRS="${RUN_ROOT}/conda_pkgs"
 export XDG_CACHE_HOME="${RUN_ROOT}/cache/xdg"
 export TORCH_HOME="${RUN_ROOT}/cache/torch"
 export WANDB_DIR="${RUN_ROOT}/wandb"
-mkdir -p "${RUN_ROOT}"
 ```
 
 Create and activate the environment:
@@ -44,6 +63,12 @@ Authenticate Hugging Face into the run-local cache:
 ```bash
 HF_HOME="${HF_HOME}" hf auth login
 HF_HOME="${HF_HOME}" hf auth whoami
+```
+
+After this setup, scripts can be run by passing the same two variables:
+
+```bash
+RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" bash scripts/preflight_image_encoder_distill.sh
 ```
 
 ## Preflight

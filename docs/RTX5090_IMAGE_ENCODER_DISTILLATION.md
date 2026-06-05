@@ -53,12 +53,11 @@ Create and activate the environment:
 ```bash
 python3.12 -m venv "${ENV_DIR}"
 source "${ENV_DIR}/bin/activate"
-python -m pip install -U pip wheel "setuptools==70.2.0" "huggingface_hub[cli]"
+python -m pip install -U pip wheel "setuptools==70.2.0"
 python - <<'PY'
 import pkg_resources
 print("pkg_resources ok")
 PY
-hf --help >/dev/null
 ```
 
 Do not manually install `mmcv` for the image-encoder distillation workflow. `pip install -e ".[stage1]"` may fail while building `mmcv` metadata, especially if the environment is missing `pkg_resources`. The preflight script first installs a pinned `setuptools` version that still provides `pkg_resources`, then falls back to the dependency set needed by this workflow if the full Stage 1 extra fails.
@@ -74,20 +73,22 @@ print("pkg_resources ok")
 PY
 ```
 
-If `hf: command not found`, install the Hugging Face CLI into the active environment:
+The default asset download path uses Hugging Face git URLs, not `hf auth login`. Install git-xet or git-lfs support before downloading large Hugging Face files. Then use your normal git credential flow; if git prompts for a password, use a Hugging Face access token.
 
 ```bash
-python -m pip install -U "huggingface_hub[cli]"
-hash -r
-hf --help >/dev/null
+git clone https://huggingface.co/facebook/sam3 "${RUN_ROOT}/cache/huggingface_git/facebook_sam3"
+mkdir -p "${RUN_ROOT}/sam3_checkpoints"
+cp "${RUN_ROOT}/cache/huggingface_git/facebook_sam3/sam3.pt" "${RUN_ROOT}/sam3_checkpoints/sam3.pt"
 ```
 
-Authenticate Hugging Face into the run-local cache:
+The scripts do the same thing automatically when a checkpoint is missing:
 
 ```bash
-HF_HOME="${HF_HOME}" hf auth login
-HF_HOME="${HF_HOME}" hf auth whoami
+export SAM3_DOWNLOAD_BACKEND=git
+export SA1B_DOWNLOAD_BACKEND=hf_git
 ```
+
+If you prefer the Hugging Face CLI, install it and opt in with `SAM3_DOWNLOAD_BACKEND=hf` or `SA1B_DOWNLOAD_BACKEND=hf`. The CLI path is optional.
 
 After this setup, scripts can be run by passing the same two variables:
 

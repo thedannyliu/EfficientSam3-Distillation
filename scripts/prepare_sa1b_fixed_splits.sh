@@ -15,7 +15,7 @@ FINETUNE_ROOT="${FINETUNE_ROOT:-${DATA_ROOT}/SA-1B-0.01P-FINETUNE}"
 
 DISTILL_TSV="${DISTILL_TSV:-${REPO_DIR}/data/sa-1b-1p.txt}"
 FULL_TSV="${FULL_TSV:-${REPO_DIR}/data/sa-1b.txt}"
-SA1B_DOWNLOAD_BACKEND="${SA1B_DOWNLOAD_BACKEND:-hf}"
+SA1B_DOWNLOAD_BACKEND="${SA1B_DOWNLOAD_BACKEND:-hf_git}"
 SA1B_HF_REPO="${SA1B_HF_REPO:-ssbai/sa1b}"
 DOWNLOAD_CONCURRENCY="${DOWNLOAD_CONCURRENCY:-4}"
 NUM_WORKERS="${NUM_WORKERS:-4}"
@@ -60,11 +60,15 @@ download_sa1b() {
       HF_BIN="${HF_BIN}" SA1B_HF_REPO="${SA1B_HF_REPO}" \
         bash "${REPO_DIR}/data/download_sa1b_hf.sh" "${tsv}" "${out_dir}" "${SA1B_HF_REPO}"
       ;;
+    hf_git)
+      HF_DOWNLOAD_BACKEND=git SA1B_HF_REPO="${SA1B_HF_REPO}" \
+        bash "${REPO_DIR}/data/download_sa1b_hf.sh" "${tsv}" "${out_dir}" "${SA1B_HF_REPO}"
+      ;;
     tsv)
       bash "${REPO_DIR}/data/download_sa1b.sh" "${tsv}" "${out_dir}" "${DOWNLOAD_CONCURRENCY}"
       ;;
     *)
-      echo "ERROR: unsupported SA1B_DOWNLOAD_BACKEND=${SA1B_DOWNLOAD_BACKEND}" >&2
+      echo "ERROR: unsupported SA1B_DOWNLOAD_BACKEND=${SA1B_DOWNLOAD_BACKEND}; use hf_git, hf, or tsv." >&2
       exit 1
       ;;
   esac

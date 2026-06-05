@@ -11,6 +11,9 @@ DISTILL_ROOT="${DISTILL_ROOT:-${DATA_ROOT}/SA-1B-1P}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${RUN_ROOT}/output}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-${RUN_ROOT}/sam3_checkpoints}"
 SAM3_CKPT="${SAM3_CKPT:-${CHECKPOINT_DIR}/sam3.pt}"
+SAM3_DOWNLOAD_BACKEND="${SAM3_DOWNLOAD_BACKEND:-git}"
+SAM3_HF_REPO_URL="${SAM3_HF_REPO_URL:-https://huggingface.co/facebook/sam3}"
+SAM3_GIT_DIR="${SAM3_GIT_DIR:-${RUN_ROOT}/cache/huggingface_git/facebook_sam3}"
 TEACHER_OUTPUT="${TEACHER_OUTPUT:-${OUTPUT_ROOT}/stage1_teacher_sa1b_1p}"
 TEACHER_EMB="${TEACHER_EMB:-${TEACHER_OUTPUT}/embeddings}"
 TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-1}"
@@ -62,21 +65,34 @@ echo "Run root: ${RUN_ROOT}"
 echo "Distill data: ${DISTILL_ROOT}"
 echo "Teacher embeddings: ${TEACHER_EMB}"
 echo "Student specs: ${STUDENT_SPECS}"
+echo "SAM3 download backend: ${SAM3_DOWNLOAD_BACKEND}"
 
 if [ ! -d "${DISTILL_ROOT}/images/train" ]; then
   bash "${REPO_DIR}/scripts/prepare_sa1b_fixed_splits.sh"
 fi
 
 if [ ! -s "${SAM3_CKPT}" ]; then
-  HF_BIN="${HF_BIN:-${ENV_DIR}/bin/hf}"
-  if [ ! -x "${HF_BIN}" ] && command -v hf >/dev/null 2>&1; then
-    HF_BIN="$(command -v hf)"
-  fi
-  if [ ! -x "${HF_BIN}" ]; then
-    echo "ERROR: hf CLI not found. Set HF_BIN or run preflight first." >&2
-    exit 1
-  fi
-  "${HF_BIN}" download facebook/sam3 sam3.pt --local-dir "${CHECKPOINT_DIR}"
+  case "${SAM3_DOWNLOAD_BACKEND}" in
+    git)
+      bash "${REPO_DIR}/scripts/download_hf_file_git.sh" \
+        "${SAM3_HF_REPO_URL}" sam3.pt "${CHECKPOINT_DIR}" "${SAM3_GIT_DIR}"
+      ;;
+    hf)
+      HF_BIN="${HF_BIN:-${ENV_DIR}/bin/hf}"
+      if [ ! -x "${HF_BIN}" ] && command -v hf >/dev/null 2>&1; then
+        HF_BIN="$(command -v hf)"
+      fi
+      if [ ! -x "${HF_BIN}" ]; then
+        echo "ERROR: hf CLI not found. Set HF_BIN or use SAM3_DOWNLOAD_BACKEND=git." >&2
+        exit 1
+      fi
+      "${HF_BIN}" download facebook/sam3 sam3.pt --local-dir "${CHECKPOINT_DIR}"
+      ;;
+    *)
+      echo "ERROR: unsupported SAM3_DOWNLOAD_BACKEND=${SAM3_DOWNLOAD_BACKEND}; use git or hf." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 TEACHER_KEYS="${TEACHER_EMB}/rank0-keys.txt"

@@ -125,17 +125,63 @@ ${RUN_ROOT}/data/SA-1B-0.01P-FINETUNE/split_manifest.json
 
 The script verifies that the fine-tune keys do not overlap the distillation keys.
 
-## Distill All 12 Image Encoders
+## Distill Smoke Run
 
-Run the matrix:
+Before the formal run, verify the same three smallest architecture families with one epoch and a tiny fixed sample count. This writes `_smoke.pt` checkpoints and uses a separate teacher embedding directory so it does not pollute the formal run.
 
 ```bash
 RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" \
-  STUDENT_EPOCHS=3 \
+  STUDENT_EPOCHS=1 \
+  STUDENT_WARMUP_EPOCHS=0 \
+  DATA_NUM_SAMPLES=4 \
+  TEACHER_NUM_SAMPLES=4 \
+  TEACHER_OUTPUT="${RUN_ROOT}/output/stage1_teacher_smoke" \
+  STUDENT_SPECS="es_rv_s:stage1/configs/es_rv_s.yaml:stage1_smoke/es_rv_s:efficient_sam3_repvit_s_smoke.pt:1 es_tv_s:stage1/configs/es_tv_s.yaml:stage1_smoke/es_tv_s:efficient_sam3_tinyvit_s_smoke.pt:1 es_ev_s:stage1/configs/es_ev_s.yaml:stage1_smoke/es_ev_s:efficient_sam3_efficientvit_s_smoke.pt:1" \
   bash scripts/run_image_encoder_distill_matrix.sh
 ```
 
-The script exports teacher embeddings once and trains/merges all 12 checkpoints:
+Smoke success means these files exist:
+
+```text
+${RUN_ROOT}/output/efficient_sam3_repvit_s_smoke.pt
+${RUN_ROOT}/output/efficient_sam3_tinyvit_s_smoke.pt
+${RUN_ROOT}/output/efficient_sam3_efficientvit_s_smoke.pt
+```
+
+## First Formal Distill Run
+
+After the smoke run passes, run the smallest model from the three primary lightweight architecture families, using the original Stage 1 epoch schedule:
+
+```bash
+RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" \
+  STUDENT_EPOCHS=50 \
+  STUDENT_WARMUP_EPOCHS=5 \
+  STUDENT_SPECS="es_rv_s:stage1/configs/es_rv_s.yaml:stage1/es_rv_s:efficient_sam3_repvit_s.pt:4 es_tv_s:stage1/configs/es_tv_s.yaml:stage1/es_tv_s:efficient_sam3_tinyvit_s.pt:4 es_ev_s:stage1/configs/es_ev_s.yaml:stage1/es_ev_s:efficient_sam3_efficientvit_s.pt:4" \
+  bash scripts/run_image_encoder_distill_matrix.sh
+```
+
+This exports teacher embeddings once and trains/merges:
+
+```text
+${RUN_ROOT}/output/efficient_sam3_repvit_s.pt
+${RUN_ROOT}/output/efficient_sam3_tinyvit_s.pt
+${RUN_ROOT}/output/efficient_sam3_efficientvit_s.pt
+```
+
+The original Stage 1 base config uses `TRAIN.EPOCHS=50` and `TRAIN.WARMUP_EPOCHS=5`.
+
+## Distill All 12 Image Encoders
+
+After the first formal run is healthy, run the full matrix with the same original Stage 1 epoch schedule:
+
+```bash
+RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" \
+  STUDENT_EPOCHS=50 \
+  STUDENT_WARMUP_EPOCHS=5 \
+  bash scripts/run_image_encoder_distill_matrix.sh
+```
+
+The full matrix trains/merges all 12 checkpoints:
 
 ```text
 ${RUN_ROOT}/output/efficient_sam3_repvit_s.pt

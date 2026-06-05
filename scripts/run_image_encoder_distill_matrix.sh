@@ -21,6 +21,7 @@ STUDENT_EPOCHS="${STUDENT_EPOCHS:-3}"
 STUDENT_WARMUP_EPOCHS="${STUDENT_WARMUP_EPOCHS:-1}"
 NUM_WORKERS="${NUM_WORKERS:-8}"
 DATA_NUM_SAMPLES="${DATA_NUM_SAMPLES:--1}"
+TEACHER_NUM_SAMPLES="${TEACHER_NUM_SAMPLES:-${DATA_NUM_SAMPLES}}"
 GPUS="${GPUS:-1}"
 LOG_DIR="${DISTILL_LOG_DIR:-${RUN_ROOT}/logs/distill_matrix}"
 
@@ -64,6 +65,7 @@ echo "Repo: ${REPO_DIR}"
 echo "Run root: ${RUN_ROOT}"
 echo "Distill data: ${DISTILL_ROOT}"
 echo "Teacher embeddings: ${TEACHER_EMB}"
+echo "Teacher samples: ${TEACHER_NUM_SAMPLES}"
 echo "Student specs: ${STUDENT_SPECS}"
 echo "SAM3 download backend: ${SAM3_DOWNLOAD_BACKEND}"
 
@@ -109,7 +111,7 @@ else
     GPUS="${GPUS}" \
     --opts \
       MODEL.RESUME "${SAM3_CKPT}" \
-      DATA.NUM_SAMPLES -1 \
+      DATA.NUM_SAMPLES "${TEACHER_NUM_SAMPLES}" \
       DATA.RANDOM_SAMPLE False \
       DATA.NUM_WORKERS "${NUM_WORKERS}" \
       DISTILL.TEACHER_EMBED_PATH "${TEACHER_EMB}"

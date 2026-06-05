@@ -18,7 +18,9 @@ Implement a script-first workflow for comparing image encoder architectures in E
 
 - `scripts/run_image_encoder_distill_matrix.sh`
   - Exports SAM3 teacher image embeddings once.
-  - Trains all 12 student image encoders.
+  - Before formal distillation, run a one-epoch smoke on the smallest RepViT, TinyViT, and EfficientViT students with a tiny fixed sample count and separate `_smoke.pt` outputs.
+  - First formal run should train the smallest RepViT, TinyViT, and EfficientViT students with the original Stage 1 schedule: `50` epochs and `5` warmup epochs.
+  - The same script can train all 12 student image encoders after the first formal run is healthy.
   - Merges each image encoder into a full SAM3 checkpoint.
 
 - `scripts/run_image_encoder_finetune_matrix.sh`

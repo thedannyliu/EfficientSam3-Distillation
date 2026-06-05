@@ -53,15 +53,33 @@ Create and activate the environment:
 ```bash
 python3.12 -m venv "${ENV_DIR}"
 source "${ENV_DIR}/bin/activate"
-python -m pip install -U pip setuptools wheel
+python -m pip install -U pip wheel "setuptools==70.2.0" "huggingface_hub[cli]"
+python - <<'PY'
+import pkg_resources
+print("pkg_resources ok")
+PY
+hf --help >/dev/null
 ```
 
-Do not manually install `mmcv` for the image-encoder distillation workflow. `pip install -e ".[stage1]"` may fail while building `mmcv` metadata, especially if the environment is missing `pkg_resources`. The preflight script first upgrades `setuptools`, then falls back to the dependency set needed by this workflow if the full Stage 1 extra fails.
+Do not manually install `mmcv` for the image-encoder distillation workflow. `pip install -e ".[stage1]"` may fail while building `mmcv` metadata, especially if the environment is missing `pkg_resources`. The preflight script first installs a pinned `setuptools` version that still provides `pkg_resources`, then falls back to the dependency set needed by this workflow if the full Stage 1 extra fails.
 
 If you see `No module named 'pkg_resources'`, fix the environment with:
 
 ```bash
-python -m pip install -U pip setuptools wheel
+python -m pip uninstall -y setuptools
+python -m pip install -U pip wheel "setuptools==70.2.0"
+python - <<'PY'
+import pkg_resources
+print("pkg_resources ok")
+PY
+```
+
+If `hf: command not found`, install the Hugging Face CLI into the active environment:
+
+```bash
+python -m pip install -U "huggingface_hub[cli]"
+hash -r
+hf --help >/dev/null
 ```
 
 Authenticate Hugging Face into the run-local cache:

@@ -36,6 +36,7 @@ PYTORCH_INDEX_URL="${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
 PYPI_INDEX_URL="${PYPI_INDEX_URL:-https://pypi.org/simple}"
 TORCH_SPEC="${TORCH_SPEC:-torch==2.11.0+cu128}"
 TORCHVISION_SPEC="${TORCHVISION_SPEC:-torchvision==0.26.0+cu128}"
+SETUPTOOLS_SPEC="${SETUPTOOLS_SPEC:-setuptools==70.2.0}"
 STUDENT_SPECS="${STUDENT_SPECS:-es_rv_s:stage1/configs/es_rv_s_5090_smoke.yaml:stage1/es_rv_s:efficient_sam3_repvit_s_smoke.pt:4 es_rv_m:stage1/configs/es_rv_m_5090_smoke.yaml:stage1/es_rv_m:efficient_sam3_repvit_m_smoke.pt:${STUDENT_BATCH_SIZE} es_rv_l:stage1/configs/es_rv_l_5090_smoke.yaml:stage1/es_rv_l:efficient_sam3_repvit_l_smoke.pt:2}"
 LOG_DIR="${DISTILL_LOG_DIR:-${RUN_ROOT}/logs/distill}"
 
@@ -74,7 +75,7 @@ PYTHON="${ENV_DIR}/bin/python"
 PIP="${ENV_DIR}/bin/pip"
 export PATH="${ENV_DIR}/bin:${PATH}"
 
-"${PYTHON}" -m pip install -U pip setuptools wheel
+"${PYTHON}" -m pip install -U pip wheel "${SETUPTOOLS_SPEC}" "huggingface_hub[cli]"
 
 echo "Installing EfficientSAM3 Stage 1 dependencies"
 if ! "${PIP}" install -e "${REPO_DIR}[stage1]"; then
@@ -84,7 +85,7 @@ if ! "${PIP}" install -e "${REPO_DIR}[stage1]"; then
     "${TORCH_SPEC}" "${TORCHVISION_SPEC}"
   "${PIP}" install \
     "timm>=1.0.17" "numpy>=1.26.4" tqdm "ftfy==6.1.1" regex \
-    "iopath>=0.1.10" typing_extensions huggingface_hub psutil \
+    "iopath>=0.1.10" typing_extensions "huggingface_hub[cli]" psutil \
     "decord>=0.6.0" "mmengine>=0.10.4" "pycocotools>=2.0.7" \
     "yacs>=0.1.8" "Pillow>=10.0.0" "opencv-python>=4.9.0.80" \
     "scipy>=1.10.0" "scikit-image>=0.21.0" "scikit-learn>=1.3.0" \

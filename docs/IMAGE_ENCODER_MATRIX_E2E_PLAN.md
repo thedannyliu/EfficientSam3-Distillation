@@ -14,7 +14,7 @@ Implement a script-first workflow for comparing image encoder architectures in E
 - `scripts/prepare_sa1b_fixed_splits.sh`
   - Prepares the fixed SA-1B 1% distillation split.
   - Samples a disjoint SA-1B 0.01% fine-tune split with seed `5091`.
-  - Writes manifests and checks overlap.
+  - Writes manifest files under `${RUN_ROOT}/data/...`; inspect them with `ls` or `cat`, do not execute the manifest paths.
 
 - `scripts/run_image_encoder_distill_matrix.sh`
   - Exports SAM3 teacher image embeddings once.

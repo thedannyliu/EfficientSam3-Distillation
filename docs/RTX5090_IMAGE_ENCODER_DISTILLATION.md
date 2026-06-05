@@ -116,11 +116,12 @@ RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" \
   bash scripts/prepare_sa1b_fixed_splits.sh
 ```
 
-Important outputs:
+Check the generated manifest files. These are file paths, not commands to execute:
 
-```text
-${RUN_ROOT}/data/SA-1B-1P/split_manifest.json
-${RUN_ROOT}/data/SA-1B-0.01P-FINETUNE/split_manifest.json
+```bash
+ls -lh \
+  "${RUN_ROOT}/data/SA-1B-1P/split_manifest.json" \
+  "${RUN_ROOT}/data/SA-1B-0.01P-FINETUNE/split_manifest.json"
 ```
 
 The script verifies that the fine-tune keys do not overlap the distillation keys.

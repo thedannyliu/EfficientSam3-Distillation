@@ -33,7 +33,7 @@ mkdir -p "${RUN_ROOT}"
 Meaning:
 
 - `RUN_ROOT`: the local working folder for generated data, checkpoints, logs, caches, and W&B files.
-- `ENV_DIR`: the Python virtual environment used by the scripts.
+- `ENV_DIR`: the Python environment path used by the scripts. This is path-based, so the environment has no conda name; activate it with `source "${ENV_DIR}/bin/activate"`.
 - `./efficientsam3_distill_runs`: relative to the repo root, so outputs stay under the project folder.
 - `efficientsam3_distill_runs/` is git-ignored and should not be committed.
 
@@ -54,10 +54,15 @@ Create and activate the environment:
 python3.12 -m venv "${ENV_DIR}"
 source "${ENV_DIR}/bin/activate"
 python -m pip install -U pip setuptools wheel
-pip install -e ".[stage1]"
 ```
 
-If dependency resolution installs a non-CUDA PyTorch wheel, use the fallback install from `scripts/preflight_image_encoder_distill.sh`.
+Do not manually install `mmcv` for the image-encoder distillation workflow. `pip install -e ".[stage1]"` may fail while building `mmcv` metadata, especially if the environment is missing `pkg_resources`. The preflight script first upgrades `setuptools`, then falls back to the dependency set needed by this workflow if the full Stage 1 extra fails.
+
+If you see `No module named 'pkg_resources'`, fix the environment with:
+
+```bash
+python -m pip install -U pip setuptools wheel
+```
 
 Authenticate Hugging Face into the run-local cache:
 
@@ -71,6 +76,8 @@ After this setup, scripts can be run by passing the same two variables:
 ```bash
 RUN_ROOT="${RUN_ROOT}" ENV_DIR="${ENV_DIR}" bash scripts/preflight_image_encoder_distill.sh
 ```
+
+The preflight command is also the recommended dependency installation path for this runbook.
 
 ## Preflight
 

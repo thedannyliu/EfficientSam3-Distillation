@@ -1,6 +1,6 @@
 # RTX 5090 Image Encoder Distillation Matrix
 
-This runbook reproduces the local workstation pipeline for EfficientSAM3 image encoder distillation, conservative end-to-end fine-tuning, and COCO prompt evaluation. Run commands from the repository root. Keep generated data, caches, logs, checkpoints, and W&B files outside the repo by setting `RUN_ROOT` to a relative path.
+This runbook reproduces the local workstation pipeline for EfficientSAM3 image encoder distillation, conservative end-to-end fine-tuning, and COCO prompt evaluation. Run commands from the repository root. Generated data, caches, logs, checkpoints, and W&B files are grouped under `RUN_ROOT`.
 
 ## Summary
 
@@ -22,19 +22,20 @@ Run every command from the repository root:
 cd EfficientSam3-Distillation
 ```
 
-Set one output root outside the repository. In this example, `RUN_ROOT` is a sibling directory next to the repo:
+Set one local run folder under the repository root:
 
 ```bash
-export RUN_ROOT="../efficientsam3_distill_runs"
+export RUN_ROOT="./efficientsam3_distill_runs"
 export ENV_DIR="${RUN_ROOT}/venv"
 mkdir -p "${RUN_ROOT}"
 ```
 
 Meaning:
 
-- `RUN_ROOT`: where generated data, checkpoints, logs, caches, and W&B files go.
+- `RUN_ROOT`: the local working folder for generated data, checkpoints, logs, caches, and W&B files.
 - `ENV_DIR`: the Python virtual environment used by the scripts.
-- `../efficientsam3_distill_runs`: relative to the repo root, so nothing is written inside the repo.
+- `./efficientsam3_distill_runs`: relative to the repo root, so outputs stay under the project folder.
+- `efficientsam3_distill_runs/` is git-ignored and should not be committed.
 
 Then point all common caches into `RUN_ROOT`:
 

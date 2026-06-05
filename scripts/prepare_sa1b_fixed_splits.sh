@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-RUN_ROOT="${RUN_ROOT:-../efficientsam3_distill_runs}"
+RUN_ROOT="${RUN_ROOT:-./efficientsam3_distill_runs}"
 ENV_DIR="${ENV_DIR:-${RUN_ROOT}/venv}"
 
 DATA_ROOT="${DATA_ROOT:-${RUN_ROOT}/data}"

@@ -66,6 +66,8 @@
 *.hdf5
 
 # ML outputs and run artifacts
+efficientsam3_distill_runs/
+efficientsam3_distill_smoke/
 runs/
 wandb/
 mlruns/

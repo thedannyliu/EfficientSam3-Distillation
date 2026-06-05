@@ -7,7 +7,7 @@ Implement a script-first workflow for comparing image encoder architectures in E
 - Distill RepViT, TinyViT, EfficientViT, and ViT in S/M/L sizes.
 - Add a conservative end-to-end fine-tune pipeline after image encoder replacement.
 - Evaluate speed and mask quality on COCO with point, box, and text prompts.
-- Keep all generated data and caches outside the repository through `RUN_ROOT`.
+- Keep all generated data and caches grouped under the git-ignored `RUN_ROOT`.
 
 ## Implementation
 
@@ -98,6 +98,6 @@ The truck prompt smoke manifest does not include COCO annotations, so IoU fields
 ## Assumptions
 
 - Local RTX 5090 workstation is the primary target for this runbook.
-- `RUN_ROOT` is a relative path such as `../efficientsam3_distill_runs`.
+- `RUN_ROOT` is a relative path such as `./efficientsam3_distill_runs`.
 - COCO `test2017` has no mask-quality score unless a prompt/annotation manifest is provided.
 - SA-1B 0.01% uses `1120` samples by default.

@@ -192,6 +192,28 @@ ${SCRATCH_ROOT}/asset_manifest.json
 Only start formal training after `rank0-keys.txt` covers the full SA-1B 1%
 image count.
 
+### Cache Run Record
+
+Submitted cache job:
+
+```text
+Job ID: 10141984
+Command:
+  PACE_ACCOUNT=gts-agarg35 \
+  GPU_TYPE=h100 \
+  CPUS_PER_TASK=8 \
+  TEACHER_BATCH_SIZE=8 \
+  TIME_LIMIT=03:00:00 \
+  bash scripts/submit_prompt_kd_asset_cache.sh
+Slurm state at submission check:
+  PD gpu-h100 embers gres/gpu:h100:1 (Priority)
+Output:
+  /storage/scratch1/9/eliu354/efficientsam3_prompt_kd/logs/slurm/tv21_kd_cache-10141984.out
+```
+
+The cache script is idempotent. If the job times out, resubmit the same command;
+completed downloads and embeddings are reused.
+
 ## Stage 1 Training After Cache
 
 After the cache job finishes:

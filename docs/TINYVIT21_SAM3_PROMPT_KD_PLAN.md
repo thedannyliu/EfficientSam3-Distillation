@@ -117,15 +117,136 @@ Use Scratch for all mutable training assets:
 
 ```text
 /storage/scratch1/9/eliu354/efficientsam3_prompt_kd/
+  envs/
   data/
+    SA-1B-1P/
+    sa-v-text/
+    coco/
+    lvis/
   teacher_cache/
+    stage1_sa1b_1p_sam3/
   runs/
   logs/
   shape_audit/
+  checkpoints/
+  asset_manifest.json
 ```
 
 Do not write checkpoints, W&B files, teacher caches, or large intermediate
 features into the git repo.
+
+## Dataset Preparation Targets
+
+The cache-first pipeline prepares data before any formal training starts.
+Stage 1 uses SA-1B 1% as requested.
+
+| Dataset | Stage | Target amount | Scratch location |
+| --- | --- | ---: | --- |
+| SA-1B 1% | Stage 1 image feature KD | all images in `data/sa-1b-1p.txt` | `${SCRATCH_ROOT}/data/SA-1B-1P` |
+| SA-1B prompts | Stage 2 point/box KD | 300k images / about 1M prompt instances | derived from SA-1B or SA-Co masks |
+| SA-Co/Silver | Stage 3 text KD | 500k text prompt records | `${SCRATCH_ROOT}/data/sa-v-text/saco-silver` |
+| LVIS | Stage 4 hard negatives | all train annotations, val for eval | `${SCRATCH_ROOT}/data/lvis` |
+| COCO | sanity and auxiliary hard cases | train2017 + val2017 | `${SCRATCH_ROOT}/data/coco` |
+| SA-Co/VEval | validation | all annotation records | `${SCRATCH_ROOT}/data/sa-v-text/saco-veval` |
+| SA-Co/Gold | final eval only | all annotation records | `${SCRATCH_ROOT}/data/sa-v-text/saco-gold` |
+
+Gold stays eval-only to avoid benchmark leakage.
+
+## Cache First
+
+Prepare datasets and export SAM3 teacher image embeddings for Stage 1:
+
+```bash
+cd /storage/project/r-agarg35-0/eliu354/projects/EfficientSam3-Distillation
+
+SCRATCH_ROOT=/storage/scratch1/9/eliu354/efficientsam3_prompt_kd \
+TEACHER_BATCH_SIZE=8 \
+GPUS=1 \
+bash scripts/prepare_tinyvit21_prompt_kd_assets.sh
+```
+
+Submit the same cache job to a GPU node:
+
+```bash
+GPU_TYPE=h100 \
+TEACHER_BATCH_SIZE=8 \
+bash scripts/submit_prompt_kd_asset_cache.sh
+```
+
+For A100 or L40S, change only `GPU_TYPE` and batch size:
+
+```bash
+GPU_TYPE=a100 TEACHER_BATCH_SIZE=4 bash scripts/submit_prompt_kd_asset_cache.sh
+GPU_TYPE=l40s TEACHER_BATCH_SIZE=2 bash scripts/submit_prompt_kd_asset_cache.sh
+```
+
+The cache job writes:
+
+```text
+${SCRATCH_ROOT}/teacher_cache/stage1_sa1b_1p_sam3/embeddings/
+  rank0-keys.txt
+  rank0-values.bin
+${SCRATCH_ROOT}/asset_manifest.json
+```
+
+Only start formal training after `rank0-keys.txt` covers the full SA-1B 1%
+image count.
+
+## Stage 1 Training After Cache
+
+After the cache job finishes:
+
+```bash
+SCRATCH_ROOT=/storage/scratch1/9/eliu354/efficientsam3_prompt_kd \
+BATCH_SIZE=32 \
+USE_WANDB=1 \
+bash scripts/run_tinyvit21_stage1_train_after_cache.sh
+```
+
+Submit to Slurm:
+
+```bash
+GPU_TYPE=h100 \
+BATCH_SIZE=32 \
+USE_WANDB=1 \
+bash scripts/submit_tinyvit21_stage1_train_after_cache.sh
+```
+
+The default Stage 1 run uses:
+
+```text
+Backbone: tiny_vit_21m
+Dataset: SA-1B 1%
+Epochs: 50
+Warmup epochs: 5
+Teacher embeddings: ${SCRATCH_ROOT}/teacher_cache/stage1_sa1b_1p_sam3/embeddings
+Output: ${SCRATCH_ROOT}/runs/tinyvit21_stage1_sa1b_1p/train
+```
+
+## Checkpoint Policy
+
+Current Stage 1 checkpoint behavior:
+
+- Every save writes `ckpt_epoch_N.pth`.
+- Every save also updates `ckpt_epoch_latest.pth`.
+- Auto-resume still picks the newest `.pth` in the output directory, so
+  `ckpt_epoch_latest.pth` is the expected resume target after this update.
+- W&B writes `wandb_run_id.txt` in the training output directory and reuses it
+  when `--use-wandb --wandb-resume allow` is passed again.
+
+Selection policy:
+
+- `latest`: for resume only.
+- `final`: the last planned epoch, used for the first merged SAM3 checkpoint.
+- `best`: not selected during Stage 1 because Stage 1 has no validation metric
+  loop. Produce `best` after running COCO/SA-Co/LVIS eval and selecting by the
+  primary eval metric.
+
+For the Stage 1 run above, the automatic merged final checkpoint is:
+
+```text
+${SCRATCH_ROOT}/runs/tinyvit21_stage1_sa1b_1p/efficient_sam3_tinyvit21_stage1_final.pt
+```
 
 ## Full Training Schedule
 

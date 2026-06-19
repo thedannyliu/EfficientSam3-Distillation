@@ -26,6 +26,7 @@ from utils import (
     get_git_info,
     is_main_process,
     load_checkpoint,
+    resolve_wandb_run_id,
     save_checkpoint,
 )
 
@@ -431,8 +432,15 @@ if __name__ == "__main__":
         config_dict["git"] = get_git_info()
         if args.use_wandb and wandb is not None:
             wandb_output_path = config.OUTPUT
+            wandb_run_id = resolve_wandb_run_id(
+                config.OUTPUT,
+                args.wandb_run_id,
+                wandb.util.generate_id,
+            )
             wandb.init(
-                project="EfficientSAM3-Stage1-Text",
+                project=args.wandb_project or "EfficientSAM3-Stage1-Text",
+                id=wandb_run_id,
+                resume=args.wandb_resume,
                 config=config_dict,
                 dir=wandb_output_path,
             )

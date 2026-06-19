@@ -49,6 +49,13 @@ def add_common_args(parser):
                         default=False, help='sync bn')
     parser.add_argument('--use-wandb', action='store_true',
                         default=False, help='use wandb to record log')
+    parser.add_argument('--wandb-project', default=None,
+                        help='W&B project name. Defaults to the train script project.')
+    parser.add_argument('--wandb-run-id', default=os.environ.get('WANDB_RUN_ID', ''),
+                        help='W&B run id for resume. Defaults to WANDB_RUN_ID or output/wandb_run_id.txt.')
+    parser.add_argument('--wandb-resume', default=os.environ.get('WANDB_RESUME', 'allow'),
+                        choices=['allow', 'must', 'never', 'auto'],
+                        help='W&B resume mode.')
 
     # distributed training
     parser.add_argument("--local-rank", type=int,
@@ -296,6 +303,25 @@ def save_checkpoint(config, epoch, model, max_accuracy, optimizer, lr_scheduler,
     logger.info(f"{save_path} saving......")
     torch.save(save_state, save_path)
     logger.info(f"{save_path} saved !!!")
+    latest_path = os.path.join(config.OUTPUT, 'ckpt_epoch_latest.pth')
+    logger.info(f"{latest_path} saving......")
+    torch.save(save_state, latest_path)
+    logger.info(f"{latest_path} saved !!!")
+
+
+def resolve_wandb_run_id(output_dir, requested_run_id, generate_id):
+    run_id_path = os.path.join(output_dir, 'wandb_run_id.txt')
+    if requested_run_id:
+        with open(run_id_path, 'w', encoding='utf-8') as f:
+            f.write(requested_run_id + '\n')
+        return requested_run_id
+    if os.path.exists(run_id_path):
+        with open(run_id_path, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    run_id = generate_id()
+    with open(run_id_path, 'w', encoding='utf-8') as f:
+        f.write(run_id + '\n')
+    return run_id
 
 
 def auto_resume_helper(output_dir):

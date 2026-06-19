@@ -194,25 +194,93 @@ image count.
 
 ### Cache Run Record
 
-Submitted cache job:
+The original monolithic cache job `10141984` was cancelled because it would
+download all auxiliary datasets before exporting Stage 1 embeddings. The active
+pipeline is split so Stage 1 training can begin as soon as Stage 1 teacher
+embeddings are ready.
 
 ```text
-Job ID: 10141984
-Command:
+Stage 1 cache:
+  Job ID: 10142290
+  Command:
+    PACE_ACCOUNT=gts-agarg35 \
+    GPU_TYPE=h100 \
+    CPUS_PER_TASK=8 \
+    TEACHER_BATCH_SIZE=8 \
+    TIME_LIMIT=03:00:00 \
+    JOB_NAME=tv21_s1_cache \
+    DOWNLOAD_SACO=0 \
+    DOWNLOAD_COCO=0 \
+    DOWNLOAD_LVIS=0 \
+    EXPORT_STAGE1_EMBEDDINGS=1 \
+    bash scripts/submit_prompt_kd_asset_cache.sh
+  State at submission check:
+    PD gpu-h100 embers gres/gpu:h100:1 (Priority)
+
+Stage 1 training:
+  Job ID: 10142293
+  Dependency: afterok:10142290
+  Command:
+    PACE_ACCOUNT=gts-agarg35 \
+    GPU_TYPE=h100 \
+    CPUS_PER_TASK=8 \
+    TIME_LIMIT=03:00:00 \
+    JOB_NAME=tv21_s1_train \
+    DEPENDENCY=afterok:10142290 \
+    BATCH_SIZE=64 \
+    GPUS=1 \
+    USE_WANDB=1 \
+    bash scripts/submit_tinyvit21_stage1_train_after_cache.sh
+  State at submission check:
+    PD gpu-h100 embers gres/gpu:h100:1 (Dependency)
+
+Auxiliary data cache:
+  Job ID: 10142299
+  Command:
+    PACE_ACCOUNT=gts-agarg35-ideas_l40s \
+    GPU_TYPE=l40s \
+    CPUS_PER_TASK=8 \
+    TIME_LIMIT=03:00:00 \
+    JOB_NAME=tv21_aux_data_cache \
+    DOWNLOAD_SACO=1 \
+    DOWNLOAD_COCO=1 \
+    DOWNLOAD_LVIS=1 \
+    EXPORT_STAGE1_EMBEDDINGS=0 \
+    bash scripts/submit_prompt_kd_asset_cache.sh
+  State at submission check:
+    PD gpu-l40s embers gres/gpu:l40s:1 (Priority)
+
+SA-Co text teacher cache:
+  Job ID: 10142374
+  Dependency: afterok:10142299
+  Command:
+    PACE_ACCOUNT=gts-agarg35-ideas_l40s \
+    GPU_TYPE=l40s \
+    CPUS_PER_TASK=8 \
+    TIME_LIMIT=03:00:00 \
+    JOB_NAME=tv21_saco_text_cache \
+    DEPENDENCY=afterok:10142299 \
+    TEXT_BATCH_SIZE=256 \
+    bash scripts/submit_saco_text_teacher_cache.sh
+  State at submission check:
+    PD gpu-l40s embers gres/gpu:l40s:1 (Dependency)
+```
+
+The cache scripts are idempotent. If a 3-hour job times out, resubmit the same
+command; completed downloads and embeddings are reused.
+
+Previous accepted cache command shape:
+
+```text
   PACE_ACCOUNT=gts-agarg35 \
   GPU_TYPE=h100 \
   CPUS_PER_TASK=8 \
   TEACHER_BATCH_SIZE=8 \
   TIME_LIMIT=03:00:00 \
   bash scripts/submit_prompt_kd_asset_cache.sh
-Slurm state at submission check:
-  PD gpu-h100 embers gres/gpu:h100:1 (Priority)
 Output:
-  /storage/scratch1/9/eliu354/efficientsam3_prompt_kd/logs/slurm/tv21_kd_cache-10141984.out
+  /storage/scratch1/9/eliu354/efficientsam3_prompt_kd/logs/slurm/<job-name>-<job-id>.out
 ```
-
-The cache script is idempotent. If the job times out, resubmit the same command;
-completed downloads and embeddings are reused.
 
 ## Stage 1 Training After Cache
 

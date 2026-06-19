@@ -8,11 +8,18 @@ PACE_PARTITION="${PACE_PARTITION:-gpu-${GPU_TYPE}}"
 PACE_GRES="${PACE_GRES:-gpu:${GPU_TYPE}:1}"
 PACE_ACCOUNT="${PACE_ACCOUNT:-gts-agarg35}"
 PACE_QOS="${PACE_QOS:-embers}"
+JOB_NAME="${JOB_NAME:-tv21_s1_train}"
+DEPENDENCY="${DEPENDENCY:-}"
+
+dependency_args=()
+if [ -n "${DEPENDENCY}" ]; then
+  dependency_args=(--dependency="${DEPENDENCY}")
+fi
 
 mkdir -p "${SCRATCH_ROOT}/logs/slurm"
 
 sbatch \
-  --job-name=tv21_s1_train \
+  --job-name="${JOB_NAME}" \
   --account="${PACE_ACCOUNT}" \
   --qos="${PACE_QOS}" \
   --partition="${PACE_PARTITION}" \
@@ -20,6 +27,7 @@ sbatch \
   --cpus-per-task="${CPUS_PER_TASK:-8}" \
   --mem="${MEM:-240G}" \
   --time="${TIME_LIMIT:-72:00:00}" \
-  --output="${SCRATCH_ROOT}/logs/slurm/tv21_s1_train-%j.out" \
+  --output="${SCRATCH_ROOT}/logs/slurm/${JOB_NAME}-%j.out" \
+  "${dependency_args[@]}" \
   --export=ALL,REPO_DIR="${REPO_DIR}",SCRATCH_ROOT="${SCRATCH_ROOT}",BATCH_SIZE="${BATCH_SIZE:-32}",GPUS="${GPUS:-1}",USE_WANDB="${USE_WANDB:-1}" \
   --wrap "bash ${REPO_DIR}/scripts/run_tinyvit21_stage1_train_after_cache.sh"

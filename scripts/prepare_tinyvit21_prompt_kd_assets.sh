@@ -21,6 +21,7 @@ NUM_WORKERS="${NUM_WORKERS:-${SLURM_CPUS_PER_TASK:-8}}"
 DOWNLOAD_SACO="${DOWNLOAD_SACO:-1}"
 DOWNLOAD_COCO="${DOWNLOAD_COCO:-1}"
 DOWNLOAD_LVIS="${DOWNLOAD_LVIS:-1}"
+PREPARE_SA1B="${PREPARE_SA1B:-1}"
 EXPORT_STAGE1_EMBEDDINGS="${EXPORT_STAGE1_EMBEDDINGS:-1}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
 
@@ -86,34 +87,38 @@ else
   echo "Using existing SAM3 checkpoint: ${SAM3_CKPT}"
 fi
 
-if [ ! -d "${SA1B_ROOT}/images/train" ]; then
-  echo "Downloading and reorganizing SA-1B 1% split."
-  case "${SA1B_DOWNLOAD_BACKEND}" in
-    hf)
-      HF_BIN="${ENV_DIR}/bin/hf" SA1B_HF_REPO="${SA1B_HF_REPO}" \
-        bash "${REPO_DIR}/data/download_sa1b_hf.sh" \
-          "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${SA1B_HF_REPO}"
-      ;;
-    hf_git)
-      HF_DOWNLOAD_BACKEND=git SA1B_HF_REPO="${SA1B_HF_REPO}" \
-        bash "${REPO_DIR}/data/download_sa1b_hf.sh" \
-          "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${SA1B_HF_REPO}"
-      ;;
-    tsv)
-      bash "${REPO_DIR}/data/download_sa1b.sh" \
-        "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${DOWNLOAD_CONCURRENCY}"
-      ;;
-    *)
-      echo "ERROR: unsupported SA1B_DOWNLOAD_BACKEND=${SA1B_DOWNLOAD_BACKEND}" >&2
-      exit 1
-      ;;
-  esac
-  "${PYTHON}" "${REPO_DIR}/data/reorg_sa1b.py" \
-    --source-dir "${SA1B_RAW_DIR}" \
-    --output-dir "${SA1B_ROOT}" \
-    --num-workers "${NUM_WORKERS}"
+if [ "${PREPARE_SA1B}" = "1" ]; then
+  if [ ! -d "${SA1B_ROOT}/images/train" ]; then
+    echo "Downloading and reorganizing SA-1B 1% split."
+    case "${SA1B_DOWNLOAD_BACKEND}" in
+      hf)
+        HF_BIN="${ENV_DIR}/bin/hf" SA1B_HF_REPO="${SA1B_HF_REPO}" \
+          bash "${REPO_DIR}/data/download_sa1b_hf.sh" \
+            "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${SA1B_HF_REPO}"
+        ;;
+      hf_git)
+        HF_DOWNLOAD_BACKEND=git SA1B_HF_REPO="${SA1B_HF_REPO}" \
+          bash "${REPO_DIR}/data/download_sa1b_hf.sh" \
+            "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${SA1B_HF_REPO}"
+        ;;
+      tsv)
+        bash "${REPO_DIR}/data/download_sa1b.sh" \
+          "${REPO_DIR}/data/sa-1b-1p.txt" "${SA1B_RAW_DIR}" "${DOWNLOAD_CONCURRENCY}"
+        ;;
+      *)
+        echo "ERROR: unsupported SA1B_DOWNLOAD_BACKEND=${SA1B_DOWNLOAD_BACKEND}" >&2
+        exit 1
+        ;;
+    esac
+    "${PYTHON}" "${REPO_DIR}/data/reorg_sa1b.py" \
+      --source-dir "${SA1B_RAW_DIR}" \
+      --output-dir "${SA1B_ROOT}" \
+      --num-workers "${NUM_WORKERS}"
+  else
+    echo "Using existing SA-1B 1% split: ${SA1B_ROOT}"
+  fi
 else
-  echo "Using existing SA-1B 1% split: ${SA1B_ROOT}"
+  echo "Skipping SA-1B 1% preparation because PREPARE_SA1B=0."
 fi
 
 if [ "${DOWNLOAD_SACO}" = "1" ]; then
@@ -158,6 +163,10 @@ SA1B_COUNT="$(find "${SA1B_ROOT}/images/train" -maxdepth 1 -name '*.jpg' 2>/dev/
 echo "SA-1B 1% image count: ${SA1B_COUNT}"
 
 if [ "${EXPORT_STAGE1_EMBEDDINGS}" = "1" ]; then
+  if [ "${SA1B_COUNT}" -eq 0 ]; then
+    echo "ERROR: cannot export Stage1 embeddings without SA-1B images." >&2
+    exit 1
+  fi
   keys_file="${TEACHER_EMB}/rank0-keys.txt"
   values_file="${TEACHER_EMB}/rank0-values.bin"
   if [ -s "${values_file}" ] && [ -f "${keys_file}" ] && \

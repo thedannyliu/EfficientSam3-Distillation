@@ -24,6 +24,11 @@ DOWNLOAD_LVIS="${DOWNLOAD_LVIS:-1}"
 PREPARE_SA1B="${PREPARE_SA1B:-1}"
 EXPORT_STAGE1_EMBEDDINGS="${EXPORT_STAGE1_EMBEDDINGS:-1}"
 INSTALL_DEPS="${INSTALL_DEPS:-1}"
+PYTORCH_INDEX_URL="${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
+PYPI_INDEX_URL="${PYPI_INDEX_URL:-https://pypi.org/simple}"
+TORCH_SPEC="${TORCH_SPEC:-torch==2.11.0+cu128}"
+TORCHVISION_SPEC="${TORCHVISION_SPEC:-torchvision==0.26.0+cu128}"
+SETUPTOOLS_SPEC="${SETUPTOOLS_SPEC:-setuptools==70.2.0}"
 
 SACO_ROOT="${SACO_ROOT:-${DATA_ROOT}/sa-v-text}"
 COCO_ROOT="${COCO_ROOT:-${DATA_ROOT}/coco}"
@@ -67,8 +72,22 @@ PIP="${ENV_DIR}/bin/pip"
 export PATH="${ENV_DIR}/bin:${PATH}"
 
 if [ "${INSTALL_DEPS}" = "1" ]; then
-  "${PYTHON}" -m pip install -U pip wheel setuptools
-  "${PIP}" install -e "${REPO_DIR}[stage1]" wandb "huggingface_hub[cli]"
+  "${PYTHON}" -m pip install -U pip wheel "${SETUPTOOLS_SPEC}" "huggingface_hub[cli]"
+  if ! "${PIP}" install -e "${REPO_DIR}[stage1]" wandb; then
+    echo "Full stage1 extra install failed; retrying with cache/export dependency set."
+    "${PIP}" install -e "${REPO_DIR}" --no-deps
+    "${PIP}" install --index-url "${PYTORCH_INDEX_URL}" --extra-index-url "${PYPI_INDEX_URL}" \
+      "${TORCH_SPEC}" "${TORCHVISION_SPEC}"
+    "${PIP}" install \
+      "timm>=1.0.17" "numpy>=1.26.4" tqdm "ftfy==6.1.1" regex \
+      "iopath>=0.1.10" typing_extensions "huggingface_hub[cli]" psutil \
+      "decord>=0.6.0" "mmengine>=0.10.4" "pycocotools>=2.0.7" \
+      "yacs>=0.1.8" "Pillow>=10.0.0" "opencv-python>=4.9.0.80" \
+      "scipy>=1.10.0" "scikit-image>=0.21.0" "scikit-learn>=1.3.0" \
+      "tensorboard>=2.12.0" "einops>=0.7.0" "hydra-core>=1.3.2" \
+      "submitit>=1.5.1" "fvcore>=0.1.5.post20221221" \
+      "fairscale>=0.4.13" pandas pyyaml segment-anything wandb
+  fi
 fi
 
 "${PYTHON}" - <<'PY'

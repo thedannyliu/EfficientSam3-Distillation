@@ -10,6 +10,9 @@ CACHE_ROOT="${CACHE_ROOT:-${SCRATCH_ROOT}/teacher_cache}"
 LOG_DIR="${LOG_DIR:-${SCRATCH_ROOT}/logs/assets}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-${SCRATCH_ROOT}/checkpoints/sam3}"
 SAM3_CKPT="${SAM3_CKPT:-${CHECKPOINT_DIR}/sam3.pt}"
+SAM3_DOWNLOAD_BACKEND="${SAM3_DOWNLOAD_BACKEND:-hf}"
+SAM3_HF_REPO_URL="${SAM3_HF_REPO_URL:-https://huggingface.co/facebook/sam3}"
+SAM3_GIT_DIR="${SAM3_GIT_DIR:-${SCRATCH_ROOT}/cache/huggingface_git/facebook_sam3}"
 
 SA1B_ROOT="${SA1B_ROOT:-${DATA_ROOT}/SA-1B-1P}"
 SA1B_RAW_DIR="${SA1B_RAW_DIR:-${DATA_ROOT}/sa-1b-1p}"
@@ -38,7 +41,8 @@ TEACHER_EMB="${TEACHER_EMB:-${TEACHER_OUTPUT}/embeddings}"
 TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-8}"
 GPUS="${GPUS:-1}"
 
-export HF_HOME="${HF_HOME:-${SCRATCH_ROOT}/cache/huggingface}"
+AMBIENT_HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
+export HF_HOME="${DISTILL_HF_HOME:-${SCRATCH_ROOT}/cache/huggingface}"
 export PIP_CACHE_DIR="${PIP_CACHE_DIR:-${SCRATCH_ROOT}/cache/pip}"
 export CONDA_PKGS_DIRS="${CONDA_PKGS_DIRS:-${SCRATCH_ROOT}/cache/conda_pkgs}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-${SCRATCH_ROOT}/cache/xdg}"
@@ -48,6 +52,11 @@ export WANDB_DIR="${WANDB_DIR:-${SCRATCH_ROOT}/wandb}"
 mkdir -p "${SCRATCH_ROOT}" "${DATA_ROOT}" "${CACHE_ROOT}" "${LOG_DIR}" \
   "${CHECKPOINT_DIR}" "${HF_HOME}" "${PIP_CACHE_DIR}" "${CONDA_PKGS_DIRS}" \
   "${XDG_CACHE_HOME}" "${TORCH_HOME}" "${WANDB_DIR}"
+
+if [ ! -f "${HF_HOME}/token" ] && [ -f "${AMBIENT_HF_HOME}/token" ]; then
+  cp "${AMBIENT_HF_HOME}/token" "${HF_HOME}/token"
+  chmod 600 "${HF_HOME}/token"
+fi
 
 LOG_FILE="${LOG_DIR}/prepare_tinyvit21_prompt_kd_assets_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
@@ -99,9 +108,20 @@ if torch.cuda.is_available():
 PY
 
 if [ ! -s "${SAM3_CKPT}" ]; then
-  bash "${REPO_DIR}/scripts/download_hf_file_git.sh" \
-    "https://huggingface.co/facebook/sam3" sam3.pt "${CHECKPOINT_DIR}" \
-    "${SCRATCH_ROOT}/cache/huggingface_git/facebook_sam3"
+  case "${SAM3_DOWNLOAD_BACKEND}" in
+    hf)
+      "${ENV_DIR}/bin/hf" download facebook/sam3 sam3.pt \
+        --local-dir "${CHECKPOINT_DIR}"
+      ;;
+    git)
+      bash "${REPO_DIR}/scripts/download_hf_file_git.sh" \
+        "${SAM3_HF_REPO_URL}" sam3.pt "${CHECKPOINT_DIR}" "${SAM3_GIT_DIR}"
+      ;;
+    *)
+      echo "ERROR: unsupported SAM3_DOWNLOAD_BACKEND=${SAM3_DOWNLOAD_BACKEND}; use hf or git." >&2
+      exit 1
+      ;;
+  esac
 else
   echo "Using existing SAM3 checkpoint: ${SAM3_CKPT}"
 fi

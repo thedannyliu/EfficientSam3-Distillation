@@ -70,5 +70,4 @@ dev = [
 Homepage = "https://github.com/SimonZeng7108/efficientsam3"
 
 [tool.setuptools.packages.find]
-include = ["stage1*", "sam3*"]
-
+include = ["stage1*", "stage1_geometry_finetune*", "stage_prompt_kd*", "sam3*"]

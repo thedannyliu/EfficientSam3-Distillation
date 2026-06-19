@@ -3,6 +3,89 @@
 This plan uses the largest TinyViT student (`tiny_vit_21m`) as the image trunk
 student for SAM3-compatible prompt-conditioned distillation.
 
+## Executed Implementation Plan
+
+The initial implementation commit is:
+
+```text
+1a96b48 Add TinyViT21 prompt KD scaffolding
+```
+
+This commit implemented the scaffolding needed to start the TinyViT-21M SAM3
+prompt-KD path safely:
+
+1. Added `stage_prompt_kd.shape_check` to make the SAM3/TinyViT dimension
+   assumptions executable.
+   - Verifies the expected TinyViT-21M raw shape.
+   - Verifies the projected student target shape.
+   - Can optionally run student and teacher forward passes when the correct
+     environment/checkpoints are available.
+
+2. Added `stage_prompt_kd.checkpointing` for resumable training state.
+   - Saves `checkpoints/latest.pt`.
+   - Saves epoch checkpoints as `checkpoints/epoch_XXXX.pt`.
+   - Stores model, optimizer, scheduler, scaler, epoch, global step, and W&B
+     run id.
+   - Reuses `wandb_run_id.txt` so W&B resume can attach to the same run.
+
+3. Added prompt-KD helper modules.
+   - `stage_prompt_kd.losses`: feature MSE, mask BCE/Dice, box L1.
+   - `stage_prompt_kd.manifest`: small prompt-record JSONL helpers and
+     mask-to-box/point utilities.
+
+4. Added a resumable smoke trainer.
+   - Entry point: `python -m stage_prompt_kd.train_smoke`.
+   - Script wrapper: `scripts/run_tinyvit21_prompt_kd_smoke.sh`.
+   - Default output root:
+     `/storage/scratch1/9/eliu354/efficientsam3_prompt_kd/runs/tinyvit21_prompt_kd_smoke`.
+   - Supports `--auto-resume`, `--resume`, `--use-wandb`, `--wandb-run-id`,
+     and `--wandb-resume`.
+
+5. Added H100 submission wrappers.
+   - `scripts/submit_h100_tinyvit21_prompt_kd_smoke.sh`
+   - `scripts/slurm_tinyvit21_prompt_kd_smoke_body.sbatch`
+   - Defaults to Scratch for logs and outputs.
+   - Defaults to `embers` QOS.
+
+6. Registered the new package in `pyproject.toml`.
+   - Added `stage_prompt_kd*`.
+   - Also included `stage1_geometry_finetune*` because the smoke trainer reuses
+     its existing `StudentTrunk`.
+
+7. Added unit tests in `tests/test_prompt_kd_scaffolding.py`.
+   - TinyViT-21M shape math.
+   - KD loss finiteness.
+   - manifest helpers.
+   - checkpoint save/load and W&B run id persistence.
+
+Validation completed before the commit:
+
+```bash
+python -m py_compile stage_prompt_kd/*.py
+bash -n scripts/run_tinyvit21_shape_check.sh \
+  scripts/run_tinyvit21_prompt_kd_smoke.sh \
+  scripts/submit_h100_tinyvit21_prompt_kd_smoke.sh \
+  scripts/slurm_tinyvit21_prompt_kd_smoke_body.sbatch
+python -m unittest discover -s tests
+python -m stage_prompt_kd.shape_check \
+  --device cpu \
+  --output-json /tmp/tinyvit21_sam3_shape.json
+git diff --check
+```
+
+The metadata-only shape check produced:
+
+```text
+TinyViT-21M raw:        [1, 576, 32, 32]
+Student projected:     [1, 1024, 72, 72]
+SAM3 teacher target:   [1, 1024, 72, 72]
+```
+
+One limitation was observed during local validation: running the model-importing
+smoke trainer from the login-node conda Python failed because that environment
+did not have `iopath`. That is expected for this repo; real smoke/full runs
+should use the project `.venv` after loading the PACE Python/CUDA modules.
+
 ## Shape Audit
 
 At SAM3 image size 1008:
